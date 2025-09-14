@@ -15,7 +15,7 @@ Requirements:
 """
 
 
-def register_block(block, *state_vars):
+def register_block(block, state_vars: list):
     """
     This is used to identify which variables in the block should be the state variables.
     These variables, if fixed, should fully specify the block, i.e Degrees of freedom should be zero.
@@ -25,8 +25,8 @@ def register_block(block, *state_vars):
             raise ValueError(
                 f"Variable {v} is not part of the block {block.name} being registered"
             )
-        v.fix() # All state variables must be fixed to register the block.
-    
+        v.fix()  # All state variables must be fixed to register the block.
+
     if degrees_of_freedom(block) > 0:
         raise ValueError(
             f"Block {block.name} has {degrees_of_freedom(block)} degrees of freedom. "
@@ -41,7 +41,7 @@ def register_block(block, *state_vars):
         )
 
     block._state_vars = state_vars
-    block._replacements = [] # List of (old_var, new_var) tuples for replacements
+    block._replacements = []  # List of (old_var, new_var) tuples for replacements
 
 
 def list_state_vars(block):
@@ -64,6 +64,13 @@ def list_guesses(block):
     return [var for var in list_state_vars(block) if not var.fixed]
 
 
+def list_fixed_state_vars(block):
+    """
+    List all fixed state variables in the block and its sub-blocks recursively.
+    """
+    return [var for var in list_state_vars(block) if var.fixed]
+
+
 def list_replacements(block):
     """
     List all replacements made in the block and its sub-blocks recursively.
@@ -76,26 +83,28 @@ def list_replacements(block):
             replacements.extend(b._replacements)
     return replacements
 
+
 def list_avaliable_vars(block):
     """
     List all avaliable variables (variables that are not state vars and are not fixed) in the block and its sub-blocks recursively.
     """
-    return ( var for var in block.component_objects(Var, descend_into=True) 
-            if var not in var.parent_block()._state_vars and not var.fixed)
-
-
+    return (
+        var
+        for var in block.component_objects(Var, descend_into=True)
+        if var not in var.parent_block()._state_vars and not var.fixed
+    )
 
 
 def closest_common_parent(comp1, comp2):
     # Collect all ancestors of comp1
     ancestors1 = set()
-    p = comp1
+    p = comp1.parent_block()
     while p is not None:
         ancestors1.add(p)
         p = p.parent_block()
 
     # Walk comp2 upwards until a match
-    p = comp2
+    p = comp2.parent_block()
     while p is not None:
         if p in ancestors1:
             return p
@@ -103,7 +112,12 @@ def closest_common_parent(comp1, comp2):
     return None
 
 
-def replace_state_var(state_var,new_var):
+def is_in(obj, container):
+    """This is to check if the reference is the name, not using python equality."""
+    return any(obj is x for x in container)
+
+
+def replace_state_var(state_var, new_var):
     state_var_parent = state_var.parent_block()
     new_var_parent = new_var.parent_block()
     parent_block = closest_common_parent(state_var, new_var)
@@ -111,18 +125,20 @@ def replace_state_var(state_var,new_var):
         raise ValueError(
             f"Variables {state_var} and {new_var} do not share a common parent block."
         )
-    
+
     # The state var must be currently fixed, and must be registered as a state var.
-    if not hasattr(state_var_parent, "_state_vars") or state_var not in state_var_parent._state_vars:
+    if not hasattr(state_var_parent, "_state_vars") or not is_in(
+        state_var, state_var_parent._state_vars
+    ):
         raise ValueError(
             f"Variable {state_var} is not a registered state variable in the closest common parent block {parent_block.name}."
         )
     if not state_var.fixed:
-        raise ValueError(
-            f"Variable {state_var} must be fixed to be replaced."
-        )
+        raise ValueError(f"Variable {state_var} must be fixed to be replaced.")
     # The new var must not be a state var, and must not be fixed.
-    if hasattr(new_var_parent, "_state_vars") and new_var in new_var_parent._state_vars:
+    if hasattr(new_var_parent, "_state_vars") and is_in(
+        new_var, new_var_parent._state_vars
+    ):
         raise ValueError(
             f"Variable {new_var} is a registered state variable in the closest common parent block {parent_block.name}."
         )
@@ -147,12 +163,11 @@ def replace_state_var(state_var,new_var):
         raise ValueError(
             f"Block {parent_block.name} must have zero degrees of freedom after replacement. Did you try to replace an indexed variable with one which has a different size?"
         )
-    
-    
+
     # Validate that this does not cause an over-constrained or under-constrained set.
     # https://pyomo.readthedocs.io/en/6.8.0/contributed_packages/incidence/tutorial.dm.html
     igraph = IncidenceGraphInterface(parent_block)
-    var_dm_partition , constraint_dm_partion = igraph.dulmage_mendelsohn()
+    var_dm_partition, constraint_dm_partion = igraph.dulmage_mendelsohn()
 
     if len(var_dm_partition.unmatched) > 0 or len(constraint_dm_partion.unmatched) > 0:
         # Revert the replacement
@@ -166,5 +181,29 @@ def replace_state_var(state_var,new_var):
 
     if not hasattr(parent_block, "_replacements"):
         parent_block._replacements = []
-    
+
     parent_block._replacements.append((state_var, new_var))
+
+
+def pprint_replacements(block):
+    """
+    Pretty print all variables and replacements in the block
+    """
+    
+    replacements = list_replacements(block)
+    if len(replacements) == 0:
+        print(f"No replacements in block {block.name}")
+        return
+    else:
+        print(f"Replacements in block {block.name}:")
+        for old_var, new_var in list_replacements(block):
+            print(f"  {old_var} -> {new_var}")
+        print()
+    
+    state_vars = list_fixed_state_vars(block)
+    if len(state_vars) == 0:
+        print(f"No other state variables in block {block.name}")
+    else:
+        print(f"Unreplaced state variables in block {block.name}:")
+        for var in list_fixed_state_vars(block):
+            print(f"  {var}")
