@@ -1,0 +1,16 @@
+# You need sudo apt install pandoc pandoc-citeproc texlive-full librsvg2-bin pdftk
+
+pandoc paper.md \
+--pdf-engine=xelatex \
+--bibliography=refs.bib \
+--toc \
+-o paper.pdf 
+
+
+# There's a bug in drawio diagrams where the text doesn't wrap correctly.
+# However, I'm handling it manually in the diagrams.
+# So the workaround is to remove the error message from the PDF.
+pdftk paper.pdf output paper_uncompressed.pdf uncompress
+sed -i -e 's/T)70(ext is not SVG - cannot display//g' paper_uncompressed.pdf
+pdftk paper_uncompressed.pdf output paper.pdf compress
+rm paper_uncompressed.pdf
