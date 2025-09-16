@@ -49,7 +49,7 @@ def is_fixed(var : Var | IndexedVar):
     Checks if a variable or indexed variable is fully fixed, or fully unfixed.
     """
     if isinstance(var, IndexedVar):
-        if all(v.fixed for v in var.values())
+        if all(v.fixed for v in var.values()):
             return True
         else:
             if any(v.fixed for v in var.values()):
