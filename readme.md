@@ -4,10 +4,8 @@ Getting to zero degrees of freedom in a model can be time consuming, as you figu
 
 This library presents a way of ensuring you always have a square model, using a few simple rules:
 
-- Specify "State Variables" by default that need to be fixed to turn the model into a square problem.
+- All models must specify "State Variables" by default that need to be fixed to turn the model into a square problem.
 - If you want to fix a different variable, you must also specify which state variable it "replaces".
-
-
 
 
 
@@ -43,3 +41,17 @@ Unreplaced state variables in block fs:
   fs.h1.deltaP
 
 ```
+
+# Reasoning
+
+This approach ensures that you are *always working with a square model*. No more "Degrees of freedom is less than/greater than zero" errors ever again!
+
+The person that builds a model generally knows how many variables need to be fixed for the problem to become square. Specifying the list of state variables for a block (or unit operation) provides an implicit form of documentation on how the modeller expects it is most likely to be used.
+
+Initialisation methods generally are designed to work based a certain set of fixed variables, usually the state variables. If so, by thinking in terms of replacement, you can provide an initial "guess" for every state variable you replace. These guesses can then be used by the initialisation routine to "guess" all the other variables. This saves you writing a different method of initialisation for every combination of fixed variables.
+
+# TODO
+
+- Add unit tests
+- Add an example with multiple unit ops and arcs
+- Expand descriptions
