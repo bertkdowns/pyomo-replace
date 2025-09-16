@@ -45,9 +45,16 @@ def register_block(block, state_vars: list):
     block._replacements = []  # List of (old_var, new_var) tuples for replacements
 
 def is_fixed(var : Var | IndexedVar):
+    """
+    Checks if a variable or indexed variable is fully fixed, or fully unfixed.
+    """
     if isinstance(var, IndexedVar):
-        # TODO: Should we throw an error if some of them are fixed and some are not?
-        return all(v.fixed for v in var.values())
+        if all(v.fixed for v in var.values())
+            return True
+        else:
+            if any(v.fixed for v in var.values()):
+                raise ValueError(f"Variable {var} is partially fixed. All indices must be either fixed or unfixed.")
+            return False
     else:
         return var.fixed
     
