@@ -2,6 +2,7 @@ from pyomo.environ import ConcreteModel, Block, Var, Expression, Constraint
 from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.network import Port, Arc
+from pyomo.core.base.var import IndexedVar, ScalarVar
 """
 Requirements:
 - Ability to identify state vars in a block
@@ -43,6 +44,13 @@ def register_block(block, state_vars: list):
     block._state_vars = state_vars
     block._replacements = []  # List of (old_var, new_var) tuples for replacements
 
+def is_fixed(var : Var | IndexedVar):
+    if isinstance(var, IndexedVar):
+        # TODO: Should we throw an error if some of them are fixed and some are not?
+        return all(v.fixed for v in var.values())
+    else:
+        return var.fixed
+    
 
 def list_state_vars(block):
     """
@@ -61,14 +69,14 @@ def list_guesses(block):
     """
     List all guess variables (state variables that have been replaced) in the block and its sub-blocks recursively.
     """
-    return [var for var in list_state_vars(block) if not var.fixed]
+    return [var for var in list_state_vars(block) if not is_fixed(var)]
 
 
 def list_fixed_state_vars(block):
     """
     List all fixed state variables in the block and its sub-blocks recursively.
     """
-    return [var for var in list_state_vars(block) if var.fixed]
+    return [var for var in list_state_vars(block) if is_fixed(var)]
 
 
 def list_replacements(block):
@@ -133,7 +141,7 @@ def replace_state_var(state_var, new_var):
         raise ValueError(
             f"Variable {state_var} is not a registered state variable in the closest common parent block {parent_block.name}."
         )
-    if not state_var.fixed:
+    if not is_fixed(state_var):
         raise ValueError(f"Variable {state_var} must be fixed to be replaced.")
     # The new var must not be a state var, and must not be fixed.
     if hasattr(new_var_parent, "_state_vars") and is_in(
@@ -142,7 +150,7 @@ def replace_state_var(state_var, new_var):
         raise ValueError(
             f"Variable {new_var} is a registered state variable in the closest common parent block {parent_block.name}."
         )
-    if new_var.fixed:
+    if is_fixed(new_var):
         raise ValueError(
             f"Variable {new_var} must not be fixed to be used as a replacement."
         )

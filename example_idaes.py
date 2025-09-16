@@ -24,4 +24,6 @@ register_block(
     ],
 )
 
+replace_state_var(m.fs.h1.heat_duty, m.fs.h1.outlet.enth_mol)
+
 pprint_replacements(m.fs)
