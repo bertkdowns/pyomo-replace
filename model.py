@@ -1,7 +1,7 @@
 from pyomo.environ import ConcreteModel, Block, Var, Expression, Constraint
 from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
-
+from pyomo.network import Port, Arc
 """
 Requirements:
 - Ability to identify state vars in a block
@@ -184,16 +184,31 @@ def replace_state_var(state_var, new_var):
 
     parent_block._replacements.append((state_var, new_var))
 
+def fix_port(port: Port):
+    """
+    To allow the degrees of freedom check to work,
+    we need to fix any other constraints coming into the model.
+    """
+    vars_to_unfix = []
+    for var in port.vars():
+        if not var.fixed:
+            var.fix()
+            vars_to_unfix.append(var)
+    return vars_to_unfix
+
+def unfix_port_vars(vars_to_unfix):
+    for var in vars_to_unfix:
+        var.unfix()
+    
 
 def pprint_replacements(block):
     """
     Pretty print all variables and replacements in the block
     """
-    
+
     replacements = list_replacements(block)
     if len(replacements) == 0:
         print(f"No replacements in block {block.name}")
-        return
     else:
         print(f"Replacements in block {block.name}:")
         for old_var, new_var in list_replacements(block):
