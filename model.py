@@ -3,6 +3,7 @@ from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.network import Port, Arc
 from pyomo.core.base.var import IndexedVar, ScalarVar
+from pyomo.gdp import Disjunct
 """
 Requirements:
 - Ability to identify state vars in a block
@@ -16,10 +17,17 @@ Requirements:
 """
 
 
-def register_block(block, state_vars: list):
+def register_block(block, state_vars: list, allow_degrees_of_freedom=False):
     """
     This is used to identify which variables in the block should be the state variables.
     These variables, if fixed, should fully specify the block, i.e Degrees of freedom should be zero.
+
+    Args:
+        block: The block to register the state variables for.
+        state_vars: List of variables to register as state variables. These will all be fixed when registering the block.
+        allow_degrees_of_freedom: If True, the block is allowed to have degrees of freedom of greater than zero. This is for example when the block is constrained by external constraints, e.g inlet conditions.
+    Raises:
+        ValueError: If any of the state variables are not part of the block, or if the block does not have zero degrees of freedom after fixing the state variables.
     """
     for v in state_vars:
         if v.parent_block() is not block:
@@ -28,7 +36,7 @@ def register_block(block, state_vars: list):
             )
         v.fix()  # All state variables must be fixed to register the block.
 
-    if degrees_of_freedom(block) > 0:
+    if degrees_of_freedom(block) > 0 and not allow_degrees_of_freedom:
         raise ValueError(
             f"Block {block.name} has {degrees_of_freedom(block)} degrees of freedom. "
             "Each block should have zero degrees of freedom when all state variables are fixed."
@@ -247,3 +255,40 @@ def pprint_replacements(block):
         print(f"Unreplaced state variables in block {block.name}:")
         for var in list_fixed_state_vars(block):
             print(f"  {var}")
+
+
+
+
+obj_iter_kwds = dict(
+    ctype=Port,
+    active=True,
+)
+
+def register_inlet_ports(block):
+    """
+    This is a helper function to add all inlet variables to the state definition of a block.
+    This is useful for unit models where the inlet variables are always state variables.
+    """
+
+    for port in block.component_objects(**obj_iter_kwds):
+        if not hasattr(port, "is_inlet"):
+            raise ValueError(
+                f"Port {port.name} does not have the 'is_inlet' attribute. Please set this attribute to True for inlet ports and False for outlet ports. This is done automatically for Pyomo-Replace Unit Operations."
+            )
+        
+        if len(port.sources()) == 0 and port.is_inlet:  # This is an inlet port
+            # if not already, register the block
+            parent_block = port.parent_block()
+            # Initialise block if there are no state vars yet
+            if not hasattr(parent_block, "_state_vars"):
+                parent_block._state_vars = []
+                parent_block._replacements = []
+            # Add all variables in the port to the state vars if not already present
+            for var_name in port.vars:
+                print(var_name)
+                var = getattr(port, var_name)
+                if var not in parent_block._state_vars:
+                    var.fix()
+                    parent_block._state_vars.append(var)
+
+    
