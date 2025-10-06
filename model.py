@@ -99,16 +99,26 @@ def list_replacements(block):
     return replacements
 
 
-def list_avaliable_vars(block):
+
+def _try_get_state_vars(block):
     """
-    List all avaliable variables (variables that are not state vars and are not fixed) in the block and its sub-blocks recursively.
+    Helper function to get state vars from a block, or return an empty list if none are registered.
+    """
+    if hasattr(block, "_state_vars"):
+        return block._state_vars
+    else:
+        return []
+
+
+def list_available_vars(block):
+    """
+    List all available variables (variables that are not state vars and are not fixed) in the block and its sub-blocks recursively.
     """
     return (
         var
         for var in block.component_objects(Var, descend_into=True)
-        if var not in var.parent_block()._state_vars and not var.fixed
+        if var not in _try_get_state_vars(var.parent_block) and not is_fixed(var)
     )
-
 
 def closest_common_parent(comp1, comp2):
     # Collect all ancestors of comp1
