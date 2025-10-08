@@ -285,7 +285,6 @@ def register_inlet_ports(block):
                 parent_block._replacements = []
             # Add all variables in the port to the state vars if not already present
             for var_name in port.vars:
-                print(var_name)
                 var = getattr(port, var_name)
                 if var not in parent_block._state_vars:
                     var.fix()

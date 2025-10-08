@@ -1,5 +1,5 @@
 ---
-title: Keeping a Square Model with mathematical modelling
+title: Variable Replacement as a technique for Managing Complexity in large Equation-Oriented models
 bibliography: refs.bib
 ---
 
@@ -7,10 +7,8 @@ bibliography: refs.bib
 
 Equation-oriented algebraic modelling has become more widespread with the introduction of tools to build algebraic models in conventional programming languages such as python and Julia. Frameworks like Pyomo and JuMP allow for complex model specification, model transformations, and initialisation routines. This has allowed for much more complicated problems to be specified in a mathematical modelling language. However, larger problems are harder to reason about in conventional mathematical terms when the problem is too large to fit in one person's head; furthermore, users are increasingly coming from a non-mathematical background. A higher level of abstraction is needed to aid the scaling of algebraic modelling techniques.  
 
-# Current Challenges
 
-
-## Model Construction
+# Background on Mathematical Modelling
 
 Fundamentally, a mathematical model is built from constants, variables, constraints, and (in the case of optimisation) an objective function.
 
@@ -29,6 +27,9 @@ These components are then used in even higher level modelling extensions:
 
 - Pyomo.DAE allows defining Differential Algebraic Equations across "infinite" sets that are discretised, automatically creating the necessary constraints to define derivatives and integrals
 - Pyomo.network allows you to represent your model as a graph: Blocks become nodes in the graph, and they can be connected to other nodes via edges called "arcs" that define equality constraints between variables. In many domains the graph view better represents the model structure. It also allows propogating initial values throughout a model. 
+
+
+# Current Challenges
 
 ## Squaring a model
 
@@ -58,19 +59,110 @@ The intuition behind variable replacement is similar: there are some variables t
 
 It follows by definition that if all state variables are fixed in a model, then the model will be fully defined, and have zero degrees of freedom. Fixing any other variable would cause the system to be over-defined. Thus, similar to in control theory, if you want to hold some other value constant, you need to also specify a state variable to "adjust". This is the fundamental principle behind variable replacement: start with all your state variables defined, and then if you want to set something else, you must choose a state variable to "replace", or unfix.
 
+# An example in IDAES.
+
+Let us consider the example of a heater in IDAES.
+
+
+First let us define the model in IDAES:
+
+```
+m = pyo.ConcreteModel()
+m.fs = FlowsheetBlock(dynamic=False)
+m.fs.pp = iapws95.Iapws95ParameterBlock()
+m.fs.h1 = DutyHeater(property_package=m.fs.pp, has_pressure_change=True)
+register_inlet_ports(m.fs)
+pprint_replacements(m.fs)
+```
+
+This would pretty-print the state of the model, with no variables replaced:
+
+```
+Unreplaced state variables:
+  fs.h1.heat_duty
+  fs.h1.deltaP
+  fs.h1.inlet.flow_mol
+  fs.h1.inlet.temperature
+  fs.h1.inlet.pressure
+```
+
+Replacing a variable is as simple as calling a function, passing the new variable to fix and the state variable to unfix:
+
+```
+replace_state_var(m.fs.h1.heat_duty, m.fs.h1.outlet.temperature)
+```
+
+`pprint_replacements` would then show that `heat_duty` has been replaced by the outlet temperature. 
+
+```
+Replaced state variables:
+  fs.h1.heat_duty -> fs.h1.outlet.temperature
+
+Unreplaced state variables in block fs:
+  fs.h1.deltaP
+  fs.h1.inlet.flow_mol
+  fs.h1.inlet.temperature
+  fs.h1.inlet.pressure
+```
+
+
+
 # Benefits
 
-This method of replacing state variables to define your model is completely invisible (irrelevant?) to the solvers and algebraic language itself, however it provides a number of practical benefits in terms of workflow and actually using mathematical modelling.
+This method of replacing state variables to define your model does not fundamentally change the model itself, however it provides a number of practical benefits in terms of workflow and actually using mathematical modelling.
 
-First, it means *you start with a fully defined model*. This completely removes one of the first problems users face when they are trying to use a mathematical simulation package, of getting to zero degrees of freedom.
-
-Second, it provides a sensible means for initialisation and scaling. If initialisation routines are defined around the state variables, good guesses of the state variables will result in good guesses of everything else. This makes defining initialisation methods much easier. Likewise, if scaling factors are defined for the state variables, all other variables can be calculated.
-
-Third, it better represents how the model may work in the real world. This can help intuition in large problems as to what is going on.
-
-Let us consider the example of a heater.
+1. It fundamentally removes the problem of Degrees of Freedom when defining a model.
+2. It provides a form of self-documentation for the system.
+3. It simplifies the problem of initialisation.
+4. It provides a standardised basis for calculating scaling factors.
 
 
+## Removing the problem of Degrees of Freedom
+
+To have a square model, you must have the same number of unknowns, or unfixed variables, as equations. A model that has more unknowns than constraints is said to have $n$ degrees of freedom, where $n_{\text{degrees\ of\ freedom}}$ is given by
+
+$$
+n_{\text{degrees\ of\ freedom}} =  n_{\text{variables}} - n_{\text{constraints}}
+$$
+
+Model libraries such as IDAES provide the equations, and then all that is required is to specify enough variables that the number of variables equals the number of unknowns. This can be done by repeatedly fixing variables in a part of a model that is not already over-defined^[i.e you must fix variables that are part a dulmage-mendelson underconstrained set.], until the model is fully defined.
+
+Alternatively, if a set of state variables are already defined by the model library, the problem is already fully defined and there are zero degrees of freedom *by definition*. If a problem requires a variable to be fixed that is not a state variable, an appropriate^[i.e a state variable that would be part of the dulmage-mendelson overconstrained set if the other variable was fixed and nothing was unfixed] state variable must be unfixed too. 
+
+## Self-Documentation
+
+Consider this snippet from the documentation of the IDAES model library:
+
+
+``Pressure Changer units generally have one or more degrees of freedom, depending on the thermodynamic assumption used.
+
+Typical fixed variables are:
+
+- outlet pressure, $P_{ratio}$ or $\Delta P$,
+- unit efficiency (isentropic or pump assumption)."
+
+By defining a set of state variables, for example outlet pressure and unit efficiency, most of this documentation is encoded in the model definition itself. The documentation could be simplified to:
+
+`` There are one or two state variables, depending on the thermodynamic assumption used.
+
+These are:
+
+- outlet pressure, which may be replaced by $P_{ratio}$ or $\Delta P$,
+- unit efficiency (isentropic or pump assumption)."
+
+As the state vars are intrinsic the model, the only real piece of documentation that is required is:
+
+``Outlet pressure may be replaced by $P_{ratio}$ or $\Delta P$''
+
+## Simplified Initialisation
+
+Initial guesses greatly increase the robustness of solving equation-oriented models. Modelling toolboxes such as IDAES provide methods to automatically define initial guesses based on fixed variables. However, if you have fixed different variables to what the modelling library expects, these methods will not provide any benefit.
+
+The concept of ``State Variables'' can simplify this process. The initialisation methods can be built to calculate initial values of all variables based on the initial values of the state variables. Only one initialisation method would be required, as long as initial guesses are provided for all the state variables. This standardises the initialisation process. 
+
+## Simplified Scaling
+
+In the same way as initialisation, calculating scaling factors depends on what values you already know. If initial scaling factors are provided for the state variables, it is much easier to calculate the other scaling factors. This standardises the scaling process. 
 
 
 
