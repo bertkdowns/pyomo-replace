@@ -5,28 +5,33 @@ bibliography: refs.bib
 
 # Introduction
 
-Equation-oriented algebraic modelling has become more widespread with the introduction of tools to build algebraic models in conventional programming languages such as python and Julia. Frameworks like Pyomo and JuMP allow for complex model specification, model transformations, and initialisation routines. This has allowed for much more complicated problems to be specified in a mathematical modelling language. However, larger problems are harder to reason about in conventional mathematical terms when the problem is too large to fit in one person's head; furthermore, users are increasingly coming from a non-mathematical background. A higher level of abstraction is needed to aid the scaling of algebraic modelling techniques.  
+Equation-oriented algebraic modelling is a powerful tool to represent certain types of physical systems, particularly those that closely follow first-principles behaviour and include non-linear dynamics. At its simplest, equation-oriented modelling is about specifying equations to represent the system and solving those equations to find the unknown properties. However, the use of numerical methods to solve the equations means that initial values to use when finding a solution, and scaling factors for variables, can be the difference between a model succeeding or failing to converge on a solution. This becomes more of a problem as the mathematical model grows larger. 
 
+Pyomo is a framework for building mathematical models that is written in Python. It includes tools to manage abstraction and complexity in a mathematical model, and to define initialisation routines and scaling factors to enhance numerical stability. A particular feature is the ability to break a mathematical model into *blocks*, where blocks can be imported from different libraries. This encourages reuse, and empowers users to build more complex models, but it makes squaring a model, initialisation, and scaling more complicated. I propose that by defining a set of state variables to provide values or guesses for will simplify the process of squaring, initialising, and scaling a model. Our library, pyomo-replace, demonstrates the benefits of this approach in the Pyomo and IDAES ecosystem.
 
 # Background on Mathematical Modelling
 
-Fundamentally, a mathematical model is built from constants, variables, constraints, and (in the case of optimisation) an objective function.
+Fundamentally, a mathematical model is simply a set of mathematical equations, optionally with an objective function.
 
-- Constants are "Fixed" numbers that do not change.
-- Variables are unknown values that are calculated to meet the constraints.
-- Constraints (both equality and inequality constraints) are used to limit the space of valid solutions.
-- An objective function is specified in terms of the variables, and returns a value to minimise or maximise within the space of valid solutions. If there is only a single valid solution, an objective function is not required.
+The main parts of these equations are:
 
-However, nowadays mathematical models are constructed in terms of higher level objects. These reflect practical patterns in the use of mathematical modelling. The Python algebraic modelling framework Pyomo demonstrates many of these:
+- *Constants:* Fixed numbers that do not change.
+- *Variables:* unknown values we solve the set of equations to find.
+- *Constraints:* equality or inequality equations that are used to implicitly define the value, or solution space of, the variables. 
+- An *Objective Function*: a function that is defined in terms of the variables, returns a value to minimise or maximise within the space of valid solutions. In square models an objective function is not required.
 
-- Constants and Variables are represented as "Fixed" and "Unfixed" variables respectively. It is easy to change which variables are fixed and which are unfixed. This arose from the observation that often you are solving the same model for slightly different properties. For example, you might want to calculate Temperature from Pressure and Enthalpy, instead of calculating enthalpy from Pressure and Temperature.
-- Variables and Constraints can be indexed across a set. A variable or constraint is added for each item in the set. Sets are constant (you can't add or remove items during solving), but it provides an easy way to scale up, down, or modify problems for slightly different cases.   
-- Variables can be grouped into "Blocks". This provides a way of isolating tightly coupled constraints and encourages reuse of similar structures.
+This is fundamentally all that is required in a mathematical model. However, pyomo also provides some additional modelling abstractions for easy programmatic creation and manipulation of models, borrowing from conventional software development data structures.
 
-These components are then used in even higher level modelling extensions:
+- Constants and Variables are represented as *Fixed Variables* and *Unfixed Variables* respectively. It is easy to change which variables are fixed and which are unfixed, so a model with the same structure can be used to solve for different variables. I.e either you can fix $x$ to calculate $y$, or you can fix $y$ to calculate $x$.
+- Variables and Constraints can be indexed across a set. A variable or constraint is added for each item in the set. Sets are constant - you can't add or remove items during solving - but they provide a generalisation that makes it easy to scale up, down, or modify problems for slightly different cases.  
+- Variables can be grouped into "Blocks". Blocks can also have sub-blocks inside them, making a tree data structure^[Variables and Blocks can be thought of like Files and Folders in a filesystem. Blocks only provide structure but no information, and can be nested inside each other, while variables contain the actual values in the model]. 
+
+Blocks are of particular interest here. Similar to how a Class in object-oriented programming provides encapsulation of more complex functionality, Blocks are used to isolate the complex internal models of different parts of a system. For example, in a mathematical model of a chemical factory, a block may be used to model each individual unit operation (a pump, heater, tank, etc). The model inside the unit operation is isolated from the higher level model, which only cares about the properties of the fluid flowing in and out of the unit operation block. 
+
+Pyomo also includes some even higher level modelling extensions:
 
 - Pyomo.DAE allows defining Differential Algebraic Equations across "infinite" sets that are discretised, automatically creating the necessary constraints to define derivatives and integrals
-- Pyomo.network allows you to represent your model as a graph: Blocks become nodes in the graph, and they can be connected to other nodes via edges called "arcs" that define equality constraints between variables. In many domains the graph view better represents the model structure. It also allows propogating initial values throughout a model. 
+- Pyomo.network allows you to represent your model as a graph: Blocks become nodes in the graph, and they can be connected to other nodes via edges called "arcs" that define equality constraints between variables. In many domains the graph view better represents the model structure. It also allows propogating initial values throughout a model. This is of particular importance as it allows sharing of information between distinct blocks.
 
 
 # Current Challenges
@@ -55,61 +60,68 @@ $$
 
 That is, the velocity $v$ of a car on flat ground is equal to some performance constant $k$ multiplied by the amount the accellerator pedal is depressed, $x$. If the accellerator is depressed further, the velocity of the car will increase. This can easily be modelled in an Algebraic Modelling language, with either the velocity of the accelleration fixed to fully define the system. In the physical world, the velocity of the car cannot be set; the only thing that can really be set is the position of the accellerator pedal. However, control theory allows you to instead hold $v$ constant, calculating the appropriate value of $x$ for that to be the case. 
 
-The intuition behind variable replacement is similar: there are some variables that it is easy to think of as fully defining the system, we will call them "state variables". They are all linearly independent. All other variables can be defined in terms of these state variables. In this example, the position of the accellerator pedal makes the most intuitive sense as the state variable, as it fully defines the system.
+The intuition behind variable replacement is similar. There are some variables that it is easy to think of as fully defining the system; we will call them "state variables". They are all linearly independent. All other variables can be defined in terms of these state variables^[This is analogus to the concept of a *critical set* in combinatorial design theory.]. In this example, the position of the accellerator pedal makes the most intuitive sense as the state variable, that is what you set to control the car's speed.
 
 It follows by definition that if all state variables are fixed in a model, then the model will be fully defined, and have zero degrees of freedom. Fixing any other variable would cause the system to be over-defined. Thus, similar to in control theory, if you want to hold some other value constant, you need to also specify a state variable to "adjust". This is the fundamental principle behind variable replacement: start with all your state variables defined, and then if you want to set something else, you must choose a state variable to "replace", or unfix.
 
+Starting with all the state variables fixed means you never have a under-defined model, and unfixing a state variable every time you fix something else means you never over-define your model. This makes it much clearer how your model is intended to be used. Initialisation and scaling methods also become much simpler if guesses are provided for all the state variables, as you only need to define one way to initialise/scale your model. 
+
 # An example in IDAES.
 
-Let us consider the example of a heater in IDAES.
+To demonstrate, let us consider the example of a heater in IDAES using pyomo-replace.
 
-
-First let us define the model in IDAES:
+First we must define the basic structure:
 
 ```
 m = pyo.ConcreteModel()
 m.fs = FlowsheetBlock(dynamic=False)
 m.fs.pp = iapws95.Iapws95ParameterBlock()
-m.fs.h1 = DutyHeater(property_package=m.fs.pp, has_pressure_change=True)
+m.fs.compressor = SVCompressor(property_package=m.fs.pp)
 register_inlet_ports(m.fs)
 pprint_replacements(m.fs)
 ```
 
-This would pretty-print the state of the model, with no variables replaced:
+This code is very similar to how a flowsheet is normally defined in IDAES. The only difference is in the last couple of lines:
+
+- the `DutyHeater` class is an extension of the IDAES `Heater` class that defines the state variables that should be used by `pyomo-replace`.
+- in most cases^[There are some exceptions, such as when both inlets are required to have the same pressure or temperature. However these are rare and there are other solutions to manage them.], the inlet ports need to be defined to fully specify the model. However, the inlet ports do not need to be defined if there is another model 'upstream' of the current model. register_inlet_ports registers the properties of all inlet ports that do not have another model upstream as state vars. This is all that is needed to fully define the model.
+- pprint_replacements is a helper function that prints a list of all state variables, and any that are being replaced by other variables. It would print the following:
 
 ```
 Unreplaced state variables:
-  fs.h1.heat_duty
-  fs.h1.deltaP
-  fs.h1.inlet.flow_mol
-  fs.h1.inlet.temperature
-  fs.h1.inlet.pressure
+  fs.compressor.deltaP
+  fs.compressor.efficiency_isentropic
+  fs.compressor.inlet.flow_mol
+  fs.compressor.inlet.enth_mol
+  fs.compressor.inlet.pressure
 ```
 
 Replacing a variable is as simple as calling a function, passing the new variable to fix and the state variable to unfix:
 
 ```
-replace_state_var(m.fs.h1.heat_duty, m.fs.h1.outlet.temperature)
+  replace_state_var(m.fs.compressor.ratioP, m.fs.heater.outlet.pressure)
 ```
 
-`pprint_replacements` would then show that `heat_duty` has been replaced by the outlet temperature. 
+`pprint_replacements` would then show that `ratioP` has been replaced by `outlet.pressure`. 
 
 ```
 Replaced state variables:
-  fs.h1.heat_duty -> fs.h1.outlet.temperature
+  fs.compressor.ratioP -> fs.h1.outlet.pressure
 
 Unreplaced state variables in block fs:
-  fs.h1.deltaP
-  fs.h1.inlet.flow_mol
-  fs.h1.inlet.temperature
-  fs.h1.inlet.pressure
+  fs.compressor.efficiency_isentropic
+  fs.compressor.inlet.flow_mol
+  fs.compressor.inlet.enth_mol
+  fs.compressor.inlet.pressure
 ```
 
+You can then set a value for `outlet.pressure` and all the other state variables, and provide a guess for `ratioP`. This model will be square and can then be solved.
 
 
 # Benefits
 
-This method of replacing state variables to define your model does not fundamentally change the model itself, however it provides a number of practical benefits in terms of workflow and actually using mathematical modelling.
+This method of replacing state variables to define your model does not fundamentally change the model itself, however it provides a number of practical benefits in terms of workflow and actually using mathematical modelling. It enforces a degree of regularity in the blocks that make up models, and in the overall structure. This increased predictability of behaviour leads to the following benefits.
+
 
 1. It fundamentally removes the problem of Degrees of Freedom when defining a model.
 2. It provides a form of self-documentation for the system.
@@ -131,28 +143,21 @@ Alternatively, if a set of state variables are already defined by the model libr
 
 ## Self-Documentation
 
-Consider this snippet from the documentation of the IDAES model library:
+The increased predictability and additional context required by defining the state variables in a model provides a natural form of documentation for a model.
 
+Consider this snippet from the documentation of IDAES (slightly reworded for context):
 
-``Pressure Changer units generally have one or more degrees of freedom, depending on the thermodynamic assumption used.
+> ``Compressor units have two degrees of freedom.
+>
+> Typical fixed variables are:
 
-Typical fixed variables are:
+> - `outlet.pressure`, `ratioP` or `deltaP`,
+> - `efficiency_isentropic`"
 
-- outlet pressure, $P_{ratio}$ or $\Delta P$,
-- unit efficiency (isentropic or pump assumption)."
+However, using the replace system, most of this information is already in the model The only extra piece of information is:
 
-By defining a set of state variables, for example outlet pressure and unit efficiency, most of this documentation is encoded in the model definition itself. The documentation could be simplified to:
+> "The state variable `ratioP` is often replaced by `outlet.pressure` or `deltaP`"
 
-`` There are one or two state variables, depending on the thermodynamic assumption used.
-
-These are:
-
-- outlet pressure, which may be replaced by $P_{ratio}$ or $\Delta P$,
-- unit efficiency (isentropic or pump assumption)."
-
-As the state vars are intrinsic the model, the only real piece of documentation that is required is:
-
-``Outlet pressure may be replaced by $P_{ratio}$ or $\Delta P$''
 
 ## Simplified Initialisation
 
@@ -164,6 +169,8 @@ The concept of ``State Variables'' can simplify this process. The initialisation
 
 In the same way as initialisation, calculating scaling factors depends on what values you already know. If initial scaling factors are provided for the state variables, it is much easier to calculate the other scaling factors. This standardises the scaling process. 
 
+
+# Case Study: Ahuora Digital Twin Platform
 
 
 
