@@ -94,7 +94,7 @@ pprint_replacements(m.fs)
 This code is very similar to how a flowsheet is normally defined in IDAES. The only difference is in the last couple of lines:
 
 - the `DutyHeater` class is an extension of the IDAES `Heater` class that defines the state variables that should be used by `pyomo-replace`.
-- in most cases^[There are some exceptions, such as when both inlets are required to have the same pressure or temperature. However these are rare and there are other solutions to manage them.], the inlet ports need to be defined to fully specify the model. However, the inlet ports do not need to be defined if there is another model 'upstream' of the current model. register_inlet_ports registers the properties of all inlet ports that do not have another model upstream as state vars. This is all that is needed to fully define the model.
+- in most cases^[There are some exceptions, such as when both inlets are required to have the same pressure or temperature. However these are rare and there are other solutions to manage them, such as treating these inlets as outlets instead.], the inlet ports need to be defined to fully specify the model. However, the inlet ports do not need to be defined if there is another model 'upstream' of the current model. register_inlet_ports registers the properties of all inlet ports that do not have another model upstream as state vars. This is all that is needed to fully define the model.
 - pprint_replacements is a helper function that prints a list of all state variables, and any that are being replaced by other variables. It would print the following:
 
 ```
@@ -147,9 +147,9 @@ $$
 n_{\text{degrees\ of\ freedom}} =  n_{\text{variables}} - n_{\text{constraints}}
 $$
 
-Model libraries such as IDAES provide the equations, and then all that is required is to specify enough variables that the number of variables equals the number of unknowns. This can be done by repeatedly fixing variables in a part of a model that is not already over-defined^[i.e you must fix variables that are part a dulmage-mendelson underconstrained set.], until the model is fully defined.
+Model libraries such as IDAES provide the equations, and then all that is required is to specify enough variables that the number of variables equals the number of unknowns. This can be done by repeatedly fixing variables in a part of a model that is not already over-defined^[i.e You must fix variables that are part a Dulmage-Mendelson underconstrained set.], until the model is fully defined.
 
-Alternatively, if a set of state variables are already defined by the model library, the problem is already fully defined and there are zero degrees of freedom *by definition*. If a problem requires a variable to be fixed that is not a state variable, an appropriate^[i.e a state variable that would be part of the dulmage-mendelson overconstrained set if the other variable was fixed and nothing was unfixed] state variable must be unfixed too. 
+Alternatively, if a set of state variables are already defined by the model library, the problem is already fully defined and there are zero degrees of freedom *by definition*. If a problem requires a variable to be fixed that is not a state variable, an appropriate^[i.e A state variable that would be part of the Dulmage-Mendelson overconstrained set if the other variable was fixed and nothing was unfixed] state variable must be unfixed too. 
 
 ## Self-Documentation
 
@@ -173,7 +173,7 @@ However, using the replace system, most of this information is already in the mo
 
 Initial guesses greatly increase the robustness of solving equation-oriented models. Modelling toolboxes such as IDAES provide methods to automatically define initial guesses based on fixed variables. However, if different variables are fixed to the ones the modelling library expects, these methods will not provide any benefit, and may even cause additional problems.
 
-![Alternative initialisation routine](assets/initialisation-methods.drawio.png)
+![Alternative initialisation routine, making use of state variables to avoid the need for different initialisation methods.](assets/initialisation-methods.drawio.png)
 
 
 The concept of "State Variables" can simplify this process, by splitting the initialisation into two parts. First, the initialisation methods can calculate initial values of all variables based on the initial values (or guesses) of the state variables. Then, once the model has been initialised in a sensible location, any state variables that are replaced can be unfixed, and the variables that are replacing them can be fixed back to their original values. The block can then be re-solved to calculate the correct value of any "guessed" state variable.
