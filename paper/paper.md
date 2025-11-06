@@ -3,13 +3,22 @@ title: Variable Replacement as a technique for Managing Complexity in large Equa
 bibliography: refs.bib
 ---
 
+\newpage
+
+# Abstract
+
+As equation oriented models grow in complexity, simple problems such as specifying degrees of freedom and initialisation become non-trivial, and reasoning about the structure becomes harder. This paper proposes an alternative workflow that maintains a model at zero degrees of freedom throughout model development. An example of this approach is provided in the Pyomo Modelling Framework. Benefits in model interpretability, maintentance, initialisation, and scaling methods are discussed, with a GUI model building tool providing a case study. These methods may be adopted by the modelling community to make it easier to build and maintain large equation oriented models.
+
+\newpage
+
 # Introduction
 
 Equation-oriented algebraic modelling is a powerful tool to represent certain types of physical systems, particularly those that closely follow first-principles behaviour and include non-linear dynamics [@shacham1982equation]. At its simplest, equation-oriented modelling is about specifying equations to represent the system and solving those equations to find the unknown properties. However, the use of numerical methods to solve the equations means that initial values to use when finding a solution, and scaling factors for variables, can be the difference between a model succeeding or failing to converge on a solution. This becomes more of a problem as the mathematical model grows larger. 
 
 Pyomo is a framework for building mathematical models that is written in Python [@hart2011pyomo]. It includes tools to manage abstraction and complexity in a mathematical model, and to define initialisation routines and scaling factors to enhance numerical stability. 
 A particular feature is the ability to break a mathematical model into *blocks*, where blocks can be imported from different libraries. This encourages reuse, and empowers users to build more complex models, but it makes squaring a model, initialisation, and scaling more complicated. 
-This article proposes that defining a set of state variables to provide values or guesses for will simplify the process of squaring, initialising, and scaling a model. Our library, pyomo-replace, demonstrates the benefits of this approach in the Pyomo and IDAES [@miller2018next] ecosystem.
+
+This article introduces a new method to fully define an equation-oriented model. We propose that this method will simplify the process of squaring, initialising, and scaling a model. Our library, pyomo-replace, demonstrates some advantages of this approach in the Pyomo and IDAES [@miller2018next] ecosystem, and the Ahuora Platform provides a case study of this approach in a graphical application.
 
 # Background on Equation-Oriented Modelling
 
@@ -302,10 +311,10 @@ After the model has been initialised once, previous solves can also be used for 
 
 Variable replacement provides an alternative way of maintaining a square model in an equation oriented framework, particularly when scaling up to larger equation oriented models. 
 
-If state variables are defined on each block added to a model, those who use the model do not need to first square the problem. Degrees of freedom are kept at zero through any changes that are made to the flowsheet. The coupling between state variables and fixed variables provides a more interpretable way of reasoning about the model, bringing the relationships between variables to the forefront. Additionally, a set of state variables and initial guesses for them makes it simpler to build initialisation and scaling methods. 
+If state variables are defined on each block added to a model, those who use the model do not need to first square the problem. Degrees of freedom are kept at zero through any changes that are made to the flowsheet. The coupling between state variables and fixed variables provides a more interpretable way of reasoning about the model, bringing the relationships between variables to the forefront. Additionally, a set of state variables and initial guesses for them makes it simpler to build initialisation and scaling methods. The Ahuora Digital Twin Platform provides a case study on how this is beneficial, particularly when using a GUI tool for modelling. 
 
-The Ahuora Digital Twin Platform provides a case study on how this is beneficial, particularly when using a GUI tool for modelling. 
-These techniques could be used to standardise the creation of libraries of equation oriented models for use in larger flowsheets, and enable Equation-Oriented modelling to be used in a more maintainable way on large projects.
+While this paper introduces Variable Replacement as a method and purview it's potential benefits, further research is required to systematically evaluate the interpretability and initialisation advantages across different types of equation-oriented models. Nonetheless, these techniques hold promise to standardise the creation and use of libraries of equation oriented models. This would enable Equation-Oriented modelling to be used in a more maintainable way on large projects. 
+
 
 
 # Appendix
