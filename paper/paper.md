@@ -20,7 +20,7 @@ A particular feature is the ability to break a mathematical model into *blocks*,
 
 This article introduces a new method to fully define an equation-oriented model. We propose that this method will simplify the process of squaring, initialising, and scaling a model. Our library, pyomo-replace, demonstrates some advantages of this approach in the Pyomo and IDAES [@miller2018next] ecosystem, and the Ahuora Platform provides a case study of this approach in a graphical application.
 
-# Background on Equation-Oriented Modelling
+## Background on Equation Oriented Modelling
 
 Fundamentally, an Equation-Oriented Model is simply a set of mathematical equations, optionally with an objective function [@biegler2010nonlinear].
 
@@ -31,7 +31,9 @@ The main parts of these equations are:
 - *Constraints:* equality or inequality equations that are used to implicitly define the value, or solution space of, the variables. 
 - An *Objective Function*: a function that is defined in terms of the variables, returns a value to minimise or maximise within the space of valid solutions. In square models an objective function is not required.
 
-This is fundamentally all that is required in a mathematical model. However, pyomo also provides some additional modelling abstractions for easy programmatic creation and manipulation of models, borrowing from conventional software development data structures.
+### Equation Oriented Modelling Frameworks 
+
+Constants, Variables, Constraints, and objectives are fundamentally all that is required in a mathematical model. However, over time additional abstractions have been developed for easier programmatic creation and manipulation of models, borrowing from conventional software development data structures. The equation oriented modelling framework Pyomo includes the following abstractions:
 
 - Constants and Variables are represented as *Fixed Variables* and *Unfixed Variables* respectively. It is easy to change which variables are fixed and which are unfixed, so a model with the same structure can be used to solve for different variables. I.e either you can fix $x$ to calculate $y$, or you can fix $y$ to calculate $x$.
 - Variables and Constraints can be indexed across a set. A variable or constraint is added for each item in the set. Sets are constant - you can't add or remove items during solving - but they provide a generalisation that makes it easy to scale up, down, or modify problems for slightly different cases.  
@@ -41,13 +43,10 @@ Blocks are of particular interest here. Similar to how a Class in object-oriente
 
 Pyomo also includes some even higher level modelling extensions:
 
-- Pyomo.DAE allows defining Differential Algebraic Equations across "infinite" sets that are discretised, automatically creating the necessary constraints to define derivatives and integrals [@nicholson2018pyomo].
-- Pyomo.network allows you to represent your model as a graph: Blocks become nodes in the graph, and they can be connected to other nodes via edges called "arcs" that define equality constraints between variables [@bynum2021pyomo]. In many domains the graph view better represents the model structure. It also allows propogating initial values throughout a model. This is of particular importance as it allows sharing of information between distinct blocks.
+- *Pyomo.DAE* allows defining Differential Algebraic Equations across "infinite" sets that are discretised, automatically creating the necessary constraints to define derivatives and integrals [@nicholson2018pyomo].
+- *Pyomo.network* allows you to represent your model as a graph: Blocks become nodes in the graph, and they can be connected to other nodes via edges called "arcs" that define equality constraints between variables [@bynum2021pyomo]. In many domains the graph view better represents the model structure. It also allows propogating initial values throughout a model. This is of particular importance as it allows sharing of information between distinct blocks.
 
-
-# Current Difficulties in Equation Oriented Modelling
-
-## Squaring a model
+### Squaring a model
 
 Pyomo's construction techniques make it possible to create libraries of pre-written blocks, containing all the constraints and variables to model a piece of a physical system [@dowling2015framework]. IDAES-PSE is a library built on top of Pyomo that creates blocks to represent chemical unit operations such as compressors, heaters, tanks, and many more [@miller2018next]. It uses pyomo.DAE to represent time as a continuous differentiable property, and Pyomo.network to represent the connections between unit operations. Because the constraints are abstracted, the user doesn't have to think too much about the mathematical modelling - instead it is a chemical simulation platform.
 
@@ -55,7 +54,7 @@ Invariably however, the user will come across the problem of Degrees of Freedom.
 
 IDAES has methods to calculate the number of degrees of freedom, and if there are any over-defined or under-defined sets that make the model linearly dependent [@lee2024model]. Still, figuring out how many and which variables need to be "fixed" to make the model square can be a challenge. It becomes easier if the documentation of a block has defined exactly how many degrees of freedom it has, and which variables it expects to have fixed. 
 
-## Initialisation & Scaling
+### Initialisation & Scaling
 
 In practice, Algebraic modelling problems are solved by initialising the unknown variables to a "best guess", and then performing an iterative search that gradually converges on the solution. In practice, this process does not always work, particularly when you are modelling non-convex systems and you start in the wrong region of convexity, or outside of the region your model was designed for [@casella2008beyond]. Even if the algorithm is able to converge, it may take significantly longer than if you had started with a good initial guess. 
 
@@ -63,7 +62,7 @@ To help with this process, IDAES includes methods to initialise a model before s
 
 Scaling works in a similar manner. In order for mathematical solvers to find accurate solutions, variables need to be scaled so that they are all approximately the same magnitude. The amount that these variables need to be scaled by is called the *scaling factor*, and it is usually some order of magnitude. IDAES includes methods to calculate the scaling factors of all variables, once you have provided the scaling factor of a few key variables. 
 
-# Related Work
+## Related Work
 
 The field of static structural analysis has helped to solve some of the problems of squaring a model. In [@bunus2001debugging], a method is proposed to help debug when a model is singular, by using Dulmage-Mendelson Decomposition to identify sets of constraints that are over-constrained or under-constrained. These methods are commonly used in frameworks such as IDAES to help ensure a square model is valid [@lee2024model]. However, while these techniques are applicable to an entire "flat" system of equations, it is hard to apply them to an individual block without understanding of what external constraints are applied. Some preliminary work has been conducted to show that in some cases issues can be identified in this level [@nilsson2008type], but it is limited in its ability to detect errors and does not appear to have much uptake in systems such as Pyomo.
 
@@ -71,7 +70,9 @@ As initialisation and scaling are also common problems across equation-oriented 
 
 Scaling is mostly a concern when variables have wildly different orders of magnitude. For example, when power is measured in order of $10^9$ $J$ but valve cross sectional areas are measured in the order of $10^{-2}$ $m^2$, the difference can quickly approach the precision of a floating-point number [@casella2017importance]. To remedy this, variables need to be scaled to similar orders of magnitude. Pyomo provides preprocessing tools for this. Often many variables require similar scaling factors based on the model definition, and so libraries such as IDAES provide tools to automatically propogate scaling factors across variables, after a few initial scaling factors are added [@idaes_scaling_doc]. However, the scaling factors the modeller needs to provide depend on the implementation of the model, and may be different to the variables that are fixed or the guesses that are required for initialisation.
 
-# An alternative intuition: Variable Replacement
+# A new method to define models: Variable Replacement
+
+## Intuition
 
 In the physical world, the concept of "degrees of freedom" is not well defined. Everything is always "fully specified" whether intentionally or unintentionally as a part of the environment. The closest thing to "fixing" a property, or holding a property constant, is control theory. Let us consider a very simple model of a car's velocity:
 
@@ -87,9 +88,64 @@ It follows by definition that if all state variables are fixed in a model, then 
 
 Starting with all the state variables fixed means you never have a under-defined model, and unfixing a state variable every time you fix something else means you never over-define your model. This makes it much clearer how your model is intended to be used. Initialisation and scaling methods also become much simpler if guesses are provided for all the state variables, as you only need to define one way to initialise/scale your model. 
 
-# An example in IDAES.
+## Formal Definition of Variable Replacement Methodology
 
-To demonstrate, let us consider the example of a heater in IDAES using pyomo-replace.
+This section outlines how Variable Replacement is defined on an equation oriented model, borrowing terminology and concepts from the Pyomo Equation-oriented Modelling ecosystem.
+
+### Model
+
+An equation oriented model can be specified as a set of Blocks, with each block containing variables and constraints between variables. In this context, a Block does not include constraints that reference anything outside that block. However, a Block may contain Ports, which provide a method of connecting Blocks together.
+
+A Port is simply a collection of variables on a block. A port is specified to be either an Inlet Port or an Outlet Port. An Inlet port may be connected to an Outlet port containing an equivalent collection of variables. The inlet and outlet port do not need to be on the same block. Connecting two ports creates an equality constraint between the variable on the Outlet and the variable on the Inlet, that is, the variable on the inlet is defined to be equal to the corresponding variable on the outlet port. 
+
+In chemical engineering, an Equation Oriented Model typically represents a flowsheet, a Block typically represents a unit operation, and Inlet and Outlet Ports represent inlets and outlets of a unit operation. 
+
+### State Variables
+
+Because each block contains a set of variables and constraints, it can be considered an independent system of equations and solved independently if the appropriate number of variables are fixed to make the problem square. Variable replacement requires defining a set of "*State Variables*", which, when all fixed, fully define the model. 
+
+The state variables are chosen by first fixing all inlet variables. All inlet variables are automatically considered state variables, if and only if the inlet is not connected to an outlet. Then, additional variables are fixed in the model until the model is square. These variables are also considered state variables.
+
+The set of state variables for a block is defined by the block itself, and the set of state variables cannot change. They may be unfixed, but only following certain rules as discussed subsequently. Typically, the set of state variables would be defined by the author of the block. As Blocks are an abstraction designed to be reused, this could be the developer of a library of modelling components, rather than the modeller of a specific flowsheet.
+
+### Building a model
+
+A model is then built out of a series of blocks. By default, all state variables are fixed, and all unconnected inlets are fixed, and so there will be no degrees of freedom. This fully specifies the model, as all operations are fully defined: either explicitly, or based on the outlet conditions of other operations.
+
+## Replacing Variables.
+
+Once a model is built, different variables can be fixed instead of the state variables. For this to happen, a couple of conditions need to be met:
+
+- A variable must be chosen (that is not already fixed) and fixed. As the model was previously fully defined, this will make the model over-defined, with -1 degrees of freedom.
+- To prevent the model becoming over-defined, a state variable must be chosen and unfixed. We say this state variable has been "replaced" with the new variable.
+- The state variable must be chosen such that all equations in the model are still linearly independent. This can be done by choosing a state variable that is part of the Dulmage-Mendelson Overconstrained set when the new variable was fixed and the model was at -1 degrees of freedom. 
+
+Metadata about which variables are replacing which state variables should be stored. If a variable is ever unfixed, the coresponding state variable must be fixed again. 
+
+As long as these conditions are met, the model will stay at zero degrees of freedom and remain structurally valid. These rules are the essence of the variable replacement methodology.
+
+## Advanced Cases
+
+### Indexed Variables
+
+We have previously discussed how pyomo allows indexing variables by a constant set of indexes. This provides a convienient grouping of variables.
+
+One Indexed Variable may be replaced by another Indexed Variable so long as the size of the indexed variables (the number of items in it's index set) are the same, and the model is still structurally sound afterwards; i.e there are no over or underconstrained variable sets. This is a convientent abstraction as it avoids having to replace each individual variable in a set. For example, in a tank, you could specify level over time instead of flow rate out of the tank over time. As long as they are both indexed by time, it is fine.
+
+### Tear Guesses in Network Loops
+
+When an outlet is connected to an inlet that is upstream of the current Block, a cycle in the network graph is detected. Pyomo.network automatically handles detecting network loops, and requires that tear guesses must be specified to help the model initialise and solve. No special handling needs to take place for variable replacement to work with this. 
+
+### Calculating Inlet Properties
+
+Inlets that are not connected to anything upstream are considered to be state variables. They can be replaced by other variables. This is generally fine, but some models are built with the expectation that inlet conditions are calculated. For example, the pressure exchanger model at [@watertap_pressure_exchanger] expects that the inlet flow on both sides is the same, meaning the flow of only one side needs to be fixed: the other side will be calculated to match. This type of model simply cannot work under the constraints we have applied on the system. 
+
+However, there is a simple workaround to make these models possible. In this example, the flow balance constraint can be replaced with a variable that calculates the residual between the flows. This residual can be fixed to zero if one of the inlet flows is unfixed as a state variable. It is up the the model developer to decide which constraint should instead be expressed as a residual, and to explain to the users of the model that the residual should be fixed. However, specifying the model this way has some advantages, as it will explicitly show the reasons the inlet conditions do not need to be fixed. 
+
+
+## An example in IDAES.
+
+Now we have defined how variable replacement works, let us consider the example of a heater in IDAES using pyomo-replace.
 
 First we must define the basic structure:
 
@@ -182,15 +238,15 @@ This was compared to the same model, at the same conditions, but with initialisa
 | Fixed Variables | Standard IDAES Initialisation | Staged Initialisation Approach |
 | --------------- | ----------------------------- | ------------------------------ |
 | Mechanical Work & Efficiency | Success | Success | 
-| Work & Outlet Pressure | InitialisationError | Success | 
+| Work & Outlet Pressure | Initialisation Error | Success | 
 | Efficiency & Outlet Pressure | Success | Success | 
-| Work & Pressure Ratio | InitialisationError | Success | 
+| Work & Pressure Ratio | Initialisation Error | Success | 
 | Efficiency & Pressure Ratio | Success | Success | 
 
 Table: Comparison of solving success with different combinations of variables, with and without staged initialisation.
 
 
-In the same way as initialisation, calculating scaling factors depends on what values you already know. If initial scaling factors are provided for the state variables, it is much easier to calculate the other scaling factors. This standardises the scaling process. 
+In the same way as initialisation, calculating scaling factors depends on what values you already know. If initial scaling factors are provided for the state variables, it is much easier to calculate the other scaling factors. This would standardise the scaling process. 
 
 
 ## Interpretability and model maintenance.
