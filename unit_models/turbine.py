@@ -1,11 +1,11 @@
 from idaes.models.unit_models import Heater
 from idaes.core import declare_process_block_class
-from idaes.models.unit_models.pressure_changer import CompressorData
+from idaes.models.unit_models.pressure_changer import TurbineData
 from model import register_block
 
 
-@declare_process_block_class("SVCompressor")
-class SVCompressorData(CompressorData):
+@declare_process_block_class("SVTurbine")
+class SVTurbineData(TurbineData):
     """
     Heater model, but it's set up with heat duty and deltaP as state variables.
     """
@@ -17,8 +17,8 @@ class SVCompressorData(CompressorData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.deltaP, self.efficiency_isentropic]
-        self.deltaP.fix(100) # Default value
+        state_vars = [self.work_mechanical, self.efficiency_isentropic]
+        self.work_mechanical.fix(100) # Default value
         self.efficiency_isentropic.fix(0.8)
         
         # Setup the default state variables.

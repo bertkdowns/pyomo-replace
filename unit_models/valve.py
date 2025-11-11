@@ -1,25 +1,24 @@
 from idaes.models.unit_models import Heater
 from idaes.core import declare_process_block_class
-from idaes.models.unit_models.pressure_changer import CompressorData
+from idaes.models.unit_models.pressure_changer import ValveData
 from model import register_block
 
 
-@declare_process_block_class("SVCompressor")
-class SVCompressorData(CompressorData):
+@declare_process_block_class("SVValve")
+class SVValveData(ValveData):
     """
     Heater model, but it's set up with heat duty and deltaP as state variables.
     """
 
     def build(self,*args, **kwargs):
         """
-        Build method for the DynamicHeaterData class.
         This method initializes the control volume and sets up the model.
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.deltaP, self.efficiency_isentropic]
+        state_vars = [self.deltaP, self.valve_opening] # these can be used to calculate CV
         self.deltaP.fix(100) # Default value
-        self.efficiency_isentropic.fix(0.8)
+        self.valve_opening.fix(0.8)
         
         # Setup the default state variables.
         # Allow_degrees_of_freedom is set to True because 

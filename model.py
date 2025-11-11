@@ -117,6 +117,22 @@ def _try_get_state_vars(block):
     else:
         return []
 
+def _safe_equal(var1,var2):
+    """
+    Safe equality check to handle different types of var/indexed var comparisons.
+    """
+    try:
+        return var1 == var2
+    except TypeError:
+        return False
+
+
+def _has_var(var,var_list):
+    """
+    Check if a variable is in a list of variables, using safe equality check.
+    """
+    return any(_safe_equal(var, v) for v in var_list)
+
 
 def list_available_vars(block):
     """
@@ -125,7 +141,7 @@ def list_available_vars(block):
     return (
         var
         for var in block.component_objects(Var, descend_into=True)
-        if var not in _try_get_state_vars(var.parent_block) and not is_fixed(var)
+        if not _has_var(var, _try_get_state_vars(var.parent_block)) and not is_fixed(var)
     )
 
 def closest_common_parent(comp1, comp2):
@@ -180,29 +196,33 @@ def replace_state_var(state_var, new_var):
             f"Variable {new_var} must not be fixed to be used as a replacement."
         )
 
+    # Note: We can't check degrees of freedom because it could be fixed by external constraints.
     # Validate that degrees of freedom is zero before the replacement
-    if degrees_of_freedom(parent_block) != 0:
-        raise ValueError(
-            f"Block {parent_block.name} must have zero degrees of freedom before replacement. Something is wrong with the model formulation. It currently has {degrees_of_freedom(parent_block)} degrees of freedom."
-        )
+    # if degrees_of_freedom(parent_block) != 0:
+    #     raise ValueError(
+    #         f"Block {parent_block.name} must have zero degrees of freedom before replacement. Something is wrong with the model formulation. It currently has {degrees_of_freedom(parent_block)} degrees of freedom."
+    #     )
     # Perform the replacement
     state_var.unfix()
     new_var.fix()
 
-    if degrees_of_freedom(parent_block) != 0:
-        # Revert the replacement
-        state_var.fix()
-        new_var.unfix()
-        raise ValueError(
-            f"Block {parent_block.name} must have zero degrees of freedom after replacement. Did you try to replace an indexed variable with one which has a different size?"
-        )
+    # if degrees_of_freedom(parent_block) != 0:
+    #     # Revert the replacement
+    #     state_var.fix()
+    #     new_var.unfix()
+    #     raise ValueError(
+    #         f"Block {parent_block.name} must have zero degrees of freedom after replacement. Did you try to replace an indexed variable with one which has a different size?"
+    #     )
 
     # Validate that this does not cause an over-constrained or under-constrained set.
     # https://pyomo.readthedocs.io/en/6.8.0/contributed_packages/incidence/tutorial.dm.html
     igraph = IncidenceGraphInterface(parent_block)
     var_dm_partition, constraint_dm_partion = igraph.dulmage_mendelsohn()
 
-    if len(var_dm_partition.unmatched) > 0 or len(constraint_dm_partion.unmatched) > 0:
+    #  ignore unmatched variables, as some of them may be fixed by outside constraints.
+    # however, if internal constraints are unmatched, that is definitely over-defined.
+    # this does not guarantee that the system is well-defined, as we would have to check both at the model level.
+    if len(constraint_dm_partion.unmatched) > 0:
         # Revert the replacement
         state_var.fix()
         new_var.unfix()
@@ -244,8 +264,9 @@ def pprint_replacements(block):
         print(f"No replacements in block {block.name}")
     else:
         print(f"Replacements in block {block.name}:")
+        print("(Variable -> Replaced State Var)")
         for old_var, new_var in list_replacements(block):
-            print(f"  {old_var} -> {new_var}")
+            print(f"  {new_var} -> {old_var}")
         print()
     
     state_vars = list_fixed_state_vars(block)
@@ -286,7 +307,7 @@ def register_inlet_ports(block):
             # Add all variables in the port to the state vars if not already present
             for var_name in port.vars:
                 var = getattr(port, var_name)
-                if var not in parent_block._state_vars:
+                if not _has_var(var, parent_block._state_vars):
                     var.fix()
                     parent_block._state_vars.append(var)
 

@@ -1,25 +1,22 @@
 from idaes.models.unit_models import Heater
 from idaes.core import declare_process_block_class
-from idaes.models.unit_models.pressure_changer import CompressorData
+from idaes.models.unit_models.mixer import MixerData
 from model import register_block
 
 
-@declare_process_block_class("SVCompressor")
-class SVCompressorData(CompressorData):
+@declare_process_block_class("SVMixer")
+class SVMixerData(MixerData):
     """
     Heater model, but it's set up with heat duty and deltaP as state variables.
     """
 
     def build(self,*args, **kwargs):
         """
-        Build method for the DynamicHeaterData class.
         This method initializes the control volume and sets up the model.
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.deltaP, self.efficiency_isentropic]
-        self.deltaP.fix(100) # Default value
-        self.efficiency_isentropic.fix(0.8)
+        state_vars = [] # mixers don't have any degree of freedom
         
         # Setup the default state variables.
         # Allow_degrees_of_freedom is set to True because 
@@ -28,5 +25,8 @@ class SVCompressorData(CompressorData):
 
         # We also need to set which ports are inlet and outlet, because 
         # IDAES doesn't store this information.
-        self.inlet.is_inlet = True
+        inlet_list = self.create_inlet_list()
+        for inlet_name in inlet_list:
+            inlet = getattr(self, inlet_name)
+            inlet.is_inlet = True
         self.outlet.is_inlet = False
