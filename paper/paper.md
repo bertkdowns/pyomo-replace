@@ -112,7 +112,7 @@ The set of state variables for a block is defined by the block itself, and the s
 
 A model is then built out of a series of blocks. By default, all state variables are fixed, and all unconnected inlets are fixed, and so there will be no degrees of freedom. This fully specifies the model, as all operations are fully defined: either explicitly, or based on the outlet conditions of other operations.
 
-## Replacing Variables.
+### Replacing Variables.
 
 Once a model is built, different variables can be fixed instead of the state variables. For this to happen, a couple of conditions need to be met:
 
@@ -124,66 +124,88 @@ Metadata about which variables are replacing which state variables should be sto
 
 As long as these conditions are met, the model will stay at zero degrees of freedom and remain structurally valid. These rules are the essence of the variable replacement methodology.
 
-## Advanced Cases
+### Advanced Cases
 
-### Indexed Variables
+#### Indexed Variables
 
 We have previously discussed how pyomo allows indexing variables by a constant set of indexes. This provides a convienient grouping of variables.
 
 One Indexed Variable may be replaced by another Indexed Variable so long as the size of the indexed variables (the number of items in it's index set) are the same, and the model is still structurally sound afterwards; i.e there are no over or underconstrained variable sets. This is a convientent abstraction as it avoids having to replace each individual variable in a set. For example, in a tank, you could specify level over time instead of flow rate out of the tank over time. As long as they are both indexed by time, it is fine.
 
-### Tear Guesses in Network Loops
+#### Tear Guesses in Network Loops
 
 When an outlet is connected to an inlet that is upstream of the current Block, a cycle in the network graph is detected. Pyomo.network automatically handles detecting network loops, and requires that tear guesses must be specified to help the model initialise and solve. No special handling needs to take place for variable replacement to work with this. 
 
-### Calculating Inlet Properties
+#### Calculating Inlet Properties
 
 Inlets that are not connected to anything upstream are considered to be state variables. They can be replaced by other variables. This is generally fine, but some models are built with the expectation that inlet conditions are calculated. For example, the pressure exchanger model at [@watertap_pressure_exchanger] expects that the inlet flow on both sides is the same, meaning the flow of only one side needs to be fixed: the other side will be calculated to match. This type of model simply cannot work under the constraints we have applied on the system. 
 
 However, there is a simple workaround to make these models possible. In this example, the flow balance constraint can be replaced with a variable that calculates the residual between the flows. This residual can be fixed to zero if one of the inlet flows is unfixed as a state variable. It is up the the model developer to decide which constraint should instead be expressed as a residual, and to explain to the users of the model that the residual should be fixed. However, specifying the model this way has some advantages, as it will explicitly show the reasons the inlet conditions do not need to be fixed. 
 
+## A reference implementation: pyomo-replace
 
-## An example in IDAES.
+To aid in evaluating the advantages of a variable replacement approach to equation-oriented modelling, we have created a small python package built on IDAES and pyomo, that demonstrates the principles of variable replacement. This library contains methods to keep track of the state variables in an IDAES model, and to keep track of what variables are replacing them. The list of state variables and replacements can be easily printed to the screen to help explain the model structure. 
 
-Now we have defined how variable replacement works, let us consider the example of a heater in IDAES using pyomo-replace.
+### An example in IDAES.
+
+To show how pyomo-replace demonstrates the replacement logic, we will consider a simple example of a heater, where the inlet properties are specified and the outlet temperature is specified, and the heat duty is calculated from the outlet temperature.
 
 First we must define the basic structure:
 
 ```
-m = pyo.ConcreteModel()
-m.fs = FlowsheetBlock(dynamic=False)
-m.fs.pp = iapws95.Iapws95ParameterBlock()
-m.fs.compressor = SVCompressor(property_package=m.fs.pp)
-register_inlet_ports(m.fs)
-pprint_replacements(m.fs)
+> m = pyo.ConcreteModel()
+> m.fs = FlowsheetBlock(dynamic=False)
+> m.fs.pp = iapws95.Iapws95ParameterBlock()
+> m.fs.compressor = SVCompressor(property_package=m.fs.pp)
+```
+These lines:
+
+- Create a new Equation Oriented Model in the Pyomo Framework
+- Add a IDAES Flowsheet into the equation oriented model (This always required when building models with IDAES)
+- Specify the fluid property package to model water, using the IAPWS95 specification [@wagner2002iapws]
+- Add a Compressor unit operation to the flowsheet, using the IAPWS95 property package to model the properties of the water.
+
+The `SVCompressor` unit model is an extension of the IDAES `Compressor` unit model that defines the state variables that should be used by `pyomo-replace`.
+
+For simplicity we will focus on only one unit operation, because it is sufficient to show all the functionality of pyomo-replace. The methods are the same for flowsheets with more unit models. Once the unit models have been added to the flowsheet and connected up, pyomo-replace requires that all inlet ports are registered as state variables:
+
+```
+> register_inlet_ports(m.fs)
 ```
 
-This code is very similar to how a flowsheet is normally defined in IDAES. The only difference is in the last couple of lines:
+This registers the properties of all inlet ports that do not have another model upstream as state vars. This is done after the unit models have been fully defined and any connections between unit operations have been made. Once this method is called, the model should have zero degrees of freedom.
 
-- the `DutyHeater` class is an extension of the IDAES `Heater` class that defines the state variables that should be used by `pyomo-replace`.
-- in most cases^[There are some exceptions, such as when both inlets are required to have the same pressure or temperature. However these are rare and there are other solutions to manage them, such as treating these inlets as outlets instead.], the inlet ports need to be defined to fully specify the model. However, the inlet ports do not need to be defined if there is another model 'upstream' of the current model. register_inlet_ports registers the properties of all inlet ports that do not have another model upstream as state vars. This is all that is needed to fully define the model.
-- pprint_replacements is a helper function that prints a list of all state variables, and any that are being replaced by other variables. It would print the following:
+Now we can view all the state variables:
+
+```
+> pprint_replacements(m.fs)
+```
+
+This prints a list of all state variables, and any that are being replaced by other variables. As we have not yet replaced any state variables, it would simply print a list of all the variables that we need to either set a value for, or replace:
 
 ```
 Unreplaced state variables:
-  fs.compressor.deltaP
-  fs.compressor.efficiency_isentropic
-  fs.compressor.inlet.flow_mol
-  fs.compressor.inlet.enth_mol
-  fs.compressor.inlet.pressure
+ fs.compressor.work_mechanical
+ fs.compressor.efficiency_isentropic
+ fs.compressor.inlet.flow_mol
+ fs.compressor.inlet.enth_mol
+ fs.compressor.inlet.pressure
 ```
 
-Replacing a variable is as simple as calling a function, passing the new variable to fix and the state variable to unfix:
+However, we wanted to specify the outlet pressure instead of the compressor Replacing a variable is as simple as calling a function, passing the new variable to fix and the state variable to unfix:
 
 ```
-  replace_state_var(m.fs.compressor.ratioP, m.fs.heater.outlet.pressure)
+> replace_state_var(m.fs.compressor.ratioP, m.fs.heater.outlet.pressure)
 ```
 
-`pprint_replacements` would then show that `ratioP` has been replaced by `outlet.pressure`. 
+Now we can run `pprint_replacements` again, to show that `work_mechanical` has been replaced by `outlet.pressure`. 
 
 ```
+> pprint_replacements(m.fs)
+
 Replaced state variables:
-  fs.compressor.ratioP -> fs.h1.outlet.pressure
+  (Fixed Variable) -> (Replaced State Variable)
+  fs.h1.outlet.pressure -> fs.compressor.work_mechanical
 
 Unreplaced state variables in block fs:
   fs.compressor.efficiency_isentropic
@@ -192,7 +214,9 @@ Unreplaced state variables in block fs:
   fs.compressor.inlet.pressure
 ```
 
-You can then set a value for `outlet.pressure` and all the other state variables, and provide a guess for `ratioP`. This model will be square and can then be solved.
+You can then set a value for `outlet.pressure` and all the other state variables, and provide a guess for `ratioP`. This model can then be initialized and solved using the standard pyomo and idaes libraries.
+
+To those familiar with IDAES, this may appear to be a more complicated approach to fixing an outlet variable, as typically you would fix it directly rather than worrying about which state variable you are replacing. 
 
 
 # Properties of a Variable Replacement approach to Equation Oriented Modelling
@@ -340,6 +364,17 @@ Both of these options require manual intervention from the modeller, as there is
 
 Whether the method of replacement improves interpretability and maintanability is a subjective question. Nonetheless, these examples demonstrate the basic properties of Variable Replacement, and the advantages that it can provide in understanding the relationships between fixed variables in the system, without needing to dig into the underlying mathematical formulations. This also makes it simpler to modify a model and maintain a solveable state. However, similar to typed languages in software development, the realisable benefit may depend on the use case. 
 
+# Case Study: Geothermal Power Plant
+
+![Flow Diagram of a fully specified Geothermal Power Plant, demonstrating which state variables are being replaced.](assets/geothermal-replacement.drawio.png)
+
+A model of a geothermal plant, outlined in [@severinsen2024digital] is shown here as a test case. This model includes four heat exchangers (the condenser, recouperator, preheater, and vaporiser), one turbine, and one pump. Each of these unit operations contribute one or two degrees of freedom: The heat exchangers need Area and Heat Transfer Coefficient (abbreviated as HTC) to be specified, and the Turbine and Pump both need efficiency and mechanical work. Additionally, the Steam Inlet, Air inlet, and Brine inlet need their temperature, pressure, and flow to be specified, as they are not connected to any upstream unit operations.
+
+However, the plant data includes stream pressures and temperatures, so the mechanical work and heat transfer coefficients are not actually set in this model. Instead, they are replaced with the pressure or temperature measured on the stream flowing out of the unit operations. Because of the replacement system, it is easy to see exactly why each of these temperatures and pressures need to be specified, and why the other streams (e.g from the recouperator to the condenser) do not need their properties specified.
+
+Those familiar with control systems may note that the variable replacement approach for the pump looks similar to the control scheme of a pump in a P&ID Diagram, where the amount of work the pump does is controlled by a PID tuner that reads from a pressure sensor. The concept is not exactly analagous for heat exchangers, where the sizing is pre-determined, but the parallels may be helpful in gaining an intuition for how degrees of freedom replacement behaves.
+
+Of particular note is the flow in the brine inlet. The factory does not record the brine flow in, however it does record the total flow out. Thus, we can replace the Brine inlet flow with the Total flow, and the Brine flow will be back-calculated. Note that the brine outlet flow is specified much later downstream from the brine inlet. When this happens in conventional Degree of Freedom replacement systems, it can be very hard to understand why the brine outlet flow needs to be specified. By using a Variable Replacement approach, it is immediately obvious. Specifying stream properties downstream of an operation, sometimes significantly downstream, is a common practice when modelling, and Variable replacement makes it easier to understand why these properties need to be specified.
 
 # Case Study: Ahuora Digital Twin Platform
 
@@ -375,6 +410,10 @@ While this paper introduces Variable Replacement as a method and purview it's po
 
 # Appendix
 
+## Pyomo-Replace Source code
+
 A sample implementation of replacement logic in Pyomo, along with the initialisation tests, are avaliable at [https://github.com/bertkdowns/pyomo-replace](https://github.com/bertkdowns/pyomo-replace).
+
+## Geothermal Model
 
 # Bibliography
