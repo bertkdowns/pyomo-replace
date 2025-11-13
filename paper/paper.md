@@ -1,5 +1,5 @@
 ---
-title: Variable Replacement as a technique for Managing Complexity in large Equation-Oriented models
+title: Variable Replacement as a technique for Managing Complexity in large Equation-Oriented Chemical Process Models
 bibliography: refs.bib
 ---
 
@@ -7,20 +7,36 @@ bibliography: refs.bib
 
 # Abstract
 
-As equation oriented models grow in complexity, simple problems such as specifying degrees of freedom and initialisation become non-trivial, and reasoning about the structure becomes harder. This paper proposes an alternative workflow that maintains a model at zero degrees of freedom throughout model development. An example of this approach is provided in the Pyomo Modelling Framework. Benefits in model interpretability, maintentance, initialisation, and scaling methods are discussed, with a GUI model building tool providing a case study. These methods may be adopted by the modelling community to make it easier to build and maintain large equation oriented models.
+Chemical process models and Chemical Digital Twins frequently rely on equation-oriented models to encode the behaviour of a factory. As equation oriented models grow in complexity, reasoning about their structure becomes harder. 
+This paper proposes an alternative workflow to build equation oriented models, inspired by traditional control systems. An example of this approach is provided in the equation-oriented modelling tool Pyomo. 
+Benefits in model interpretability, maintentance, initialisation, and scaling methods are discussed. Various case studies demonstrate how processes can be modelled in this manner, and how these techniques may prove advantageous in a graphical user interface for chemical process design. 
+These methods may be adopted by the modelling community to make it easier to build and maintain large equation oriented models.
 
 \newpage
 
 # Introduction
 
-Equation-oriented algebraic modelling is a powerful tool to represent certain types of physical systems, particularly those that closely follow first-principles behaviour and include non-linear dynamics [@shacham1982equation]. At its simplest, equation-oriented modelling is about specifying equations to represent the system and solving those equations to find the unknown properties. However, the use of numerical methods to solve the equations means that initial values to use when finding a solution, and scaling factors for variables, can be the difference between a model succeeding or failing to converge on a solution. This becomes more of a problem as the mathematical model grows larger. 
+Designing and operating chemical factories requires accurate, comprehensive models of their behaviour. A powerful tool to represent chemical processes is equation-oriented algebraic modelling, as chemical processes often closely follow first-principles behaviour and include non-linear dynamics, two things that equation oriented modelling excels at [@shacham1982equation]. 
 
-Pyomo is a framework for building mathematical models that is written in Python [@hart2011pyomo]. It includes tools to manage abstraction and complexity in a mathematical model, and to define initialisation routines and scaling factors to enhance numerical stability. 
-A particular feature is the ability to break a mathematical model into *blocks*, where blocks can be imported from different libraries. This encourages reuse, and empowers users to build more complex models, but it makes squaring a model, initialisation, and scaling more complicated. 
+At its simplest, equation-oriented modelling involves specifying equations to represent the system, and solving those equations to find the unknown properties. However, modern processes are very complex, and Digital Twin technology means these models are built to be more integrated than ever before. This results in very complex equation oriented models and very large sets of equations.
+
+Because equation-oriented modelling is inherently implicit, in these large models it can be hard to interpret the interactions between variables, or understand what is required to fully define the model. Additionally, equation oriented modelling still fundamentally relies on numerical methods to solve the system of equations. Initial values and scaling factors for variables can be the difference between a model succeeding or failing to converge on a solution. This becomes more of a problem as the mathematical model grows larger. 
+
+To help deal with the complexity of modern equation-oriented models, software engineering techniques can be applied. Equation oriented models are usually specified in a declarative manner through algebraic modelling languages. Newer algebraic modelling languages such as Pyomo draw on software engineering principles of abstraction and ecapsulation to make this process easier. They also include tools to help with initialisation and scaling. However, as an equation oriented model is considered simeultaneously, while a conventional software program is run iteratively, it is much harder to apply these techniques and new methods need to be developed to simplify how a model is built.
 
 This article introduces a new method to fully define an equation-oriented model. We propose that this method will simplify the process of squaring, initialising, and scaling a model. Our library, pyomo-replace, demonstrates some advantages of this approach in the Pyomo and IDAES [@miller2018next] ecosystem, and the Ahuora Platform provides a case study of this approach in a graphical application.
 
-## Background on Equation Oriented Modelling
+## Background
+
+### Chemical Process Modelling
+
+In the Chemical Process industry, modelling and simulation is frequently used to design factories, and ensure that they run smoothly. Factories use many different compounds and fluids, with many different pieces of equipment, known as *unit operations*, to heat, cool, mix, and separate the fluid streams. Some properties, such as temperature, pressure, power, or flow, can often relatively easily measured. Other properties, such as efficiency, heat capacity, or composition, may be harder to measure. Process modelling can help to predict these properties, to accurately size equipment or help set optimal operating conditions. 
+
+With the advent of more computing resources and networked sites, process modelling has become more critical than ever before.  One way this is shown is in the rise in popularity of Digital Twins, which try to make a complete and comprehensive model of many different properties of entire sites and their surroundings [@walmsley2024adaptive]. As these models have become larger, being able to understand all of the constraints within the system simultaneously becomes harder and harder, making it harder to run, interpret, or adjust the model. 
+
+The behaviour of Chemical processes is commonly modelled with Equation Oriented models [@biegler1997systematic]. This is usually done in an Algebraic Modelling Language or equation-oriented modelling framework, sometimes with the assistance of graphical user interface (GUI). 
+
+### Equation Oriented Modelling
 
 Fundamentally, an Equation-Oriented Model is simply a set of mathematical equations, optionally with an objective function [@biegler2010nonlinear].
 
@@ -33,24 +49,38 @@ The main parts of these equations are:
 
 ### Equation Oriented Modelling Frameworks 
 
-Constants, Variables, Constraints, and objectives are fundamentally all that is required in a mathematical model. However, over time additional abstractions have been developed for easier programmatic creation and manipulation of models, borrowing from conventional software development data structures. The equation oriented modelling framework Pyomo includes the following abstractions:
+Constants, Variables, Constraints, and objectives are fundamentally all that is required in a mathematical model. However, over time additional abstractions have been developed for easier programmatic creation and manipulation of models, borrowing from conventional software development data structures. 
+
+Traditionally, equation oriented models were built in special-purpose languages, such as GAMS and AMPL. More recently they have moved to general-purpose programming languages, which have extra tooling avaliable that allow you to build and initialise large equation-oriented models programmatically [@jusevivcius2021experimental]. 
+Some of the main modern equation oriented modelling tools include JuMP, built on Julia, and Pyomo, built on python. 
+
+We will focus on Pyomo in particular here, as it was built with chemical process modelling in mind and has good libraries to aid in chemical process modelling [@hart2011pyomo]. It is a framework for building mathematical models that is written in Python . It includes tools to manage abstraction and complexity in a mathematical model, and to define initialisation routines and scaling factors to enhance numerical stability. 
+The equation oriented modelling framework Pyomo includes the following abstractions:
 
 - Constants and Variables are represented as *Fixed Variables* and *Unfixed Variables* respectively. It is easy to change which variables are fixed and which are unfixed, so a model with the same structure can be used to solve for different variables. I.e either you can fix $x$ to calculate $y$, or you can fix $y$ to calculate $x$.
 - Variables and Constraints can be indexed across a set. A variable or constraint is added for each item in the set. Sets are constant - you can't add or remove items during solving - but they provide a generalisation that makes it easy to scale up, down, or modify problems for slightly different cases.  
-- Variables can be grouped into "Blocks". Blocks can also have sub-blocks inside them, making a tree data structure^[Variables and Blocks can be thought of like Files and Folders in a filesystem. Blocks only provide structure but no information, and can be nested inside each other, while variables contain the actual values in the model]. 
+- Variables can be grouped into *Blocks*. Blocks can also have sub-blocks inside them, making a tree data structure^[Variables and Blocks can be thought of like Files and Folders in a filesystem. Blocks only provide structure but no information, and can be nested inside each other, while variables contain the actual values in the model]. 
 
-Blocks are of particular interest here. Similar to how a Class in object-oriented programming provides encapsulation of more complex functionality, Blocks are used to isolate the complex internal models of different parts of a system. For example, in a mathematical model of a chemical factory, a block may be used to model each individual unit operation (a pump, heater, tank, etc). The model inside the unit operation is isolated from the higher level model, which only cares about the properties of the fluid flowing in and out of the unit operation block. 
+Blocks are of particular interest here. Similar to how a class in object-oriented programming provides encapsulation of more complex functionality, Blocks are used to isolate the complex internal models of different parts of a system. For example, in a mathematical model of a chemical factory, a block may be used to model each individual unit operation (a pump, heater, tank, etc). The model inside the unit operation is isolated from the higher level model, which only cares about the properties of the fluid flowing in and out of the unit operation block. 
 
-Pyomo also includes some even higher level modelling extensions:
+Pyomo also includes some even higher level modelling extensions, which are of particular relevance to Chemical Process Modelling:
 
-- *Pyomo.DAE* allows defining Differential Algebraic Equations across "infinite" sets that are discretised, automatically creating the necessary constraints to define derivatives and integrals [@nicholson2018pyomo].
-- *Pyomo.network* allows you to represent your model as a graph: Blocks become nodes in the graph, and they can be connected to other nodes via edges called "arcs" that define equality constraints between variables [@bynum2021pyomo]. In many domains the graph view better represents the model structure. It also allows propogating initial values throughout a model. This is of particular importance as it allows sharing of information between distinct blocks.
+- *Pyomo.DAE* allows defining Differential Algebraic Equations across "infinite" sets that are discretised, automatically creating the necessary constraints to define derivatives and integrals [@nicholson2018pyomo]. This is naturally useful in chemical and process modelling to create 1D simulations across time, taking in to account holdup, tank level, and so forth. 
+- *Pyomo.network* allows you to represent your model as a graph: Blocks become nodes in the graph, and they can be connected to other nodes via edges called "arcs" that define equality constraints between variables [@bynum2021pyomo]. In many domains the graph view better represents the model structure. It also allows propogating initial values throughout a model. This is of particular importance as it allows sharing of information between distinct blocks. In a Chemical Process, it is natural to use this interface to encode the connections between different unit operations, so that the output material of one unit operation is the input material to a successive unit operation.
+
+Pyomo's construction techniques make it possible to create libraries of pre-written blocks, containing all the constraints and variables to model a piece of a physical system [@dowling2015framework]. One such library is IDAES-PSE. Built on top of Pyomo, it creates blocks to represent chemical unit operations such as compressors, heaters, tanks, and many more [@miller2018next]. It uses pyomo.DAE to represent time as a continuous differentiable property, and Pyomo.network to represent the connections between unit operations. Because the constraints are abstracted, the user doesn't have to think too much about the mathematical modelling - instead it is a chemical simulation platform.
 
 ### Squaring a model
 
-Pyomo's construction techniques make it possible to create libraries of pre-written blocks, containing all the constraints and variables to model a piece of a physical system [@dowling2015framework]. IDAES-PSE is a library built on top of Pyomo that creates blocks to represent chemical unit operations such as compressors, heaters, tanks, and many more [@miller2018next]. It uses pyomo.DAE to represent time as a continuous differentiable property, and Pyomo.network to represent the connections between unit operations. Because the constraints are abstracted, the user doesn't have to think too much about the mathematical modelling - instead it is a chemical simulation platform.
+In order to solve a set of equations exactly, a "square" model is required. This term is taken from linear algebra where a matrix must be square to be invertible, i.e have an exact solution. What it really means is that there must be the same number of equations (constraints) as there are unknowns (unfixed variables). 
 
-Invariably however, the user will come across the problem of Degrees of Freedom. In order to solve a set of equations exactly, a "square" model is required. This term is taken from linear algebra where a matrix must be square to be invertible, i.e have an exact solution. What it really means is that there must be the same number of equations (constraints) as there are unknowns (unfixed variables). Additionally, all the variables and equations must be linerarly independent. 
+The difference between the two is described as the degrees of freedom. A model that has more unknowns than constraints is said to have $n$ degrees of freedom, where $n_{\text{degrees\ of\ freedom}}$ is given by
+
+$$
+n_{\text{degrees\ of\ freedom}} =  n_{\text{variables}} - n_{\text{constraints}}
+$$
+
+Additionally, all the variables and equations must be linerarly independent. When building an equation oriented model, the user will invariably come across the problem of Degrees of Freedom; usually they will not have specified the model sufficiently to be able to solve for an exact solution, i.e $n_{\text{degrees\ of\ freedom}} > 0$. 
 
 IDAES has methods to calculate the number of degrees of freedom, and if there are any over-defined or under-defined sets that make the model linearly dependent [@lee2024model]. Still, figuring out how many and which variables need to be "fixed" to make the model square can be a challenge. It becomes easier if the documentation of a block has defined exactly how many degrees of freedom it has, and which variables it expects to have fixed. 
 
@@ -74,7 +104,7 @@ Scaling is mostly a concern when variables have wildly different orders of magni
 
 ## Intuition
 
-In the physical world, the concept of "degrees of freedom" is not well defined. Everything is always "fully specified" whether intentionally or unintentionally as a part of the environment. The closest thing to "fixing" a property, or holding a property constant, is control theory. Let us consider a very simple model of a car's velocity:
+In mathematical modelling, you can choose what variables in a model you want to specify, and which ones are calculated. In the physical world, you don't get to choose at all: there are some things that you can adjust, and some that simply follow as a natural consequence. The closest thing to "fixing" a property, or holding a property constant, is control theory. Let us consider a very simple model of a car's velocity:
 
 $$
 v = kx
@@ -84,9 +114,9 @@ That is, the velocity $v$ of a car on flat ground is equal to some performance c
 
 The intuition behind variable replacement is similar. There are some variables that it is easy to think of as fully defining the system; we will call them "state variables". They are all linearly independent. All other variables can be defined in terms of these state variables^[This is analogus to the concept of a *critical set* in combinatorial design theory.]. In this example, the position of the accellerator pedal makes the most intuitive sense as the state variable, that is what you set to control the car's speed.
 
-It follows by definition that if all state variables are fixed in a model, then the model will be fully defined, and have zero degrees of freedom. Fixing any other variable would cause the system to be over-defined. Thus, similar to in control theory, if you want to hold some other value constant, you need to also specify a state variable to "adjust". This is the fundamental principle behind variable replacement: start with all your state variables defined, and then if you want to set something else, you must choose a state variable to "replace", or unfix.
+It follows by definition that if all state variables are fixed in a model, then the model will be fully defined, and have zero degrees of freedom. Fixing any other variable would cause the system to be over-defined. Thus, similar to in control theory, if you wanted to hold the velocity constant, you need to be able to adjust the amount the accellerator pedal is depressed. This is the fundamental principle behind variable replacement: start with all your state variables defined, and then if you want to set something else, you must choose a state variable to "replace", or unfix.
 
-Starting with all the state variables fixed means you never have a under-defined model, and unfixing a state variable every time you fix something else means you never over-define your model. This makes it much clearer how your model is intended to be used. Initialisation and scaling methods also become much simpler if guesses are provided for all the state variables, as you only need to define one way to initialise/scale your model. 
+Starting with all the state variables fixed means you never have a under-defined model. Unfixing a state variable every time you fix something else means you never over-define your model. This makes it much clearer how your model is intended to be used. Initialisation and scaling methods also become much simpler if guesses are provided for all the state variables, as you only need to define one way to initialise/scale your model. 
 
 ## Formal Definition of Variable Replacement Methodology
 
@@ -142,9 +172,17 @@ Inlets that are not connected to anything upstream are considered to be state va
 
 However, there is a simple workaround to make these models possible. In this example, the flow balance constraint can be replaced with a variable that calculates the residual between the flows. This residual can be fixed to zero if one of the inlet flows is unfixed as a state variable. It is up the the model developer to decide which constraint should instead be expressed as a residual, and to explain to the users of the model that the residual should be fixed. However, specifying the model this way has some advantages, as it will explicitly show the reasons the inlet conditions do not need to be fixed. 
 
+### Application to Optimisation Problems
+
+Optimisation problems do not have zero degrees of freedom, and so this technique is not exactly applicable. However, generally a flowsheet is solved exactly, without performing optimisation, to provide a starting point for the optimisation algorithm. Then variables are unfixed and the optimisation problem is solved. This approach would work fine using the variable replacement methodology: variable replacement could be used to fully define the model for an initial solve. Then a set of additional variables can be unfixed and the optimisation algorithm can be run. 
+
+Additionally, knowing the list of state variables may still provide good context for optimisation, as any state variables you unfix are the ones that you are calculating an optimum value for.
+
 ## A reference implementation: pyomo-replace
 
-To aid in evaluating the advantages of a variable replacement approach to equation-oriented modelling, we have created a small python package built on IDAES and pyomo, that demonstrates the principles of variable replacement. This library contains methods to keep track of the state variables in an IDAES model, and to keep track of what variables are replacing them. The list of state variables and replacements can be easily printed to the screen to help explain the model structure. 
+To aid in evaluating the advantages of a variable replacement approach to equation-oriented modelling, we have created a small python package built on IDAES and pyomo, called pyomo-repace. It demonstrates the principles of variable replacement in a format as similar as possible to standard IDAES modelling, to make it easier to draw comparisons between the two approaches. 
+
+Pyomo-replace contains methods to keep track of the state variables in an IDAES model, and what variables are replacing them. The list of state variables and replacements can be easily printed to the screen to help explain the model structure. 
 
 ### An example in IDAES.
 
@@ -234,17 +272,13 @@ Variable replacement enforces a degree of regularity in the blocks that make up 
 
 ## Removing the problem of Squaring a Model
 
-To have a square model, you must have the same number of unknowns, or unfixed variables, as equations. A model that has more unknowns than constraints is said to have $n$ degrees of freedom, where $n_{\text{degrees\ of\ freedom}}$ is given by
-
-$$
-n_{\text{degrees\ of\ freedom}} =  n_{\text{variables}} - n_{\text{constraints}}
-$$
+To have a square model, you must have the same number of unknowns, or unfixed variables, as equations, i.e $n_{\text{degrees\ of\ freedom}} = 0$.
 
 Traditional model libraries such as IDAES provide the equations, and then all that is required is to specify enough variables that the number of variables equals the number of unknowns. This can be done by repeatedly fixing variables in a part of a model that is not already over-defined^[i.e You must fix variables that are part of a Dulmage-Mendelson underconstrained set.], until the model is fully defined. Incorrect degrees of freedom has been identified as a common source of errors in equation oriented models, and checking the degrees of freedom is the first recommended step to diagnose problems [@lee2024model]. Newer analysis methods, such as Dulmage-Mendelson Decomposition do make this simpler, but it is still an iterative process.
 
 Using a Variable Replacement approach, a set of state variables would be already defined by the model library, so the user would not need to square the model. There are zero degrees of freedom *by definition*. If a problem requires a variable to be fixed that is not a state variable, an appropriate^[i.e A state variable that would be part of the Dulmage-Mendelson overconstrained set if the other variable was fixed and nothing was unfixed] state variable must be unfixed too. As we add a degree of fredom every time we remove a degree of freedom, they 'cancel out' guaranteeing that we will continue to have a square model. This eliminates an entire class of errors with practical application of equation oriented models.
 
-## Simplified Initialisation and scaling
+## Simplified Initialisation and Scaling
 
 Initial guesses greatly increase the robustness of solving equation-oriented models. Modelling toolboxes such as IDAES provide methods to automatically define initial guesses based on fixed variables. However, if different variables are fixed to the ones the modelling library expects, these methods will not provide any benefit, and may even cause additional problems.
 
@@ -269,65 +303,38 @@ This was compared to the same model, at the same conditions, but with initialisa
 
 Table: Comparison of solving success with different combinations of variables, with and without staged initialisation.
 
-
-In the same way as initialisation, calculating scaling factors depends on what values you already know. If initial scaling factors are provided for the state variables, it is much easier to calculate the other scaling factors. This would standardise the scaling process. 
+In the same way as initialisation, calculating scaling factors depends on what values you already know. IDAES currently includes methods to calculate scaling factors for all other variables once you have entered scaling factors for a few key variables. If those few key variables are simply the state variables, it standardises the whole process of scaling as well. 
 
 
 ## Interpretability and model maintenance.
 
-The replacement system bakes in more context to the model. Similar to a type system in a programming language, this increases the model's interpretability and maintainability. As this is a relatively subjective concept, it will be illustrated through a series of examples differing in scale and complexity.
+In conventional programming languages, type systems are frequently used to increase a programs interpretability. In many cases, typing is not strictly necessary for a program to run, but it bakes in crucial context about what the expected inputs and outputs of a piece of code are. While this is generally more verbose than the equivalent untyped code, many developers find this invaluable in helping to understand the system.
+
+The replacement system works in a similar manner, as it bakes in more context to the model. Similar to a type system in a programming language, this increases the model's interpretability and maintainability. Technically, it doesn't matter which state variable a model is replacing; just which variables are fixed and which are unfixed. However, having that context makes understanding *why* a variable needs to be fixed much clearer.
+
+Admittedly, interpretability is a relatively subjective concept. Thus it will be illustrated through a series of examples differing in scale and complexity, and reasoning will be provided as to why the extra context that Variable Replacement provides benefits that case.
 
 ### Example 1: A single Compressor
 
-A simple compressor model, using a traditional modelling toolbox, may include the following variables:
+A simple compressor model, using a traditional modelling toolbox, may include the following variables as shown in Figure \ref{compressor-dof}.
 
-| **Compressor Variables** |**(5 Degrees of Freedom)** | |
-| --- | --- | --- |
-| **Inlet** | **Unit** | **Outlet** |
-| Temperature | Pressure Increase | Temperature |
-| Pressure | Efficiency | Pressure |
-| Flow Rate |   | Flow Rate |
+![Variables in a simple compressor model. \label{compressor-dof}](assets/compressor-5dof.drawio.png)
 
-Table: Variables in a simple compressor model.
+The equivalent model, using a variable replacement approach, would have state variables already defined by the developer of the Compressor Unit Model (Figure \ref{compressor-sv-defined}).
 
+![Variables in a simple compressor model, with everything that is not a fixed greyed out. \label{compressor-sv-defined}](assets/compressor-sv.drawio.png)
 
-The equivalent model, using a variable replacement approach, would have state variables (SV) already defined:
+This is more interpretable, as it provides extra context: it explains what the model developer expected was most likely to be fixed.
 
-| **Compressor Variables** | | |
-| --- | --- | --- |
-| **Inlet** | **Unit** | **Outlet** |
-| Temperature (*SV*) | Pressure Increase (*SV*) | Temperature |
-| Pressure (*SV*) | Efficiency (*SV*) | Pressure |
-| Flow Rate (*SV*) |   | Flow Rate |
+However, depending on the problem, different variables may be fixed. For example, the outlet pressure may be known instead of the mechanical work. In a traditional system, you would just fix the outlet pressure instead of the mechanical work (Figure \ref{compressor-fixed-traditional}).
 
-Table: Variables in a simple compressor model, with the state variables denoted (*SV*).
+![Fully specified compressor model using a traditional approach. \label{compressor-fixed-traditional}](assets/compressor-fixed-outlet.drawio.png)
 
-This is more interpretable, as it explains what the model developer expected was most likely to be fixed.
+The equivalent model, using a variable replacement approach, would require explicitly replacing the mechanical work state variable. This would create a link between the two variables to show what Mechanical work was replaced by (Figure \ref{compressor-replacement}). 
 
-However, depending on the problem, different variables may be fixed. For example, the outlet pressure may be known instead of the pressure increase, in which case it would be fixed instead:
+![Compressor model using the variable replacement system, with Outlet Pressure replacing Mechanical Work. \label{compressor-replacement}](assets/compressor-replaced.drawio.png)
 
-
-| **Compressor Variables** |**(0 Degrees of Freedom)** | |
-| --- | --- | --- |
-| **Inlet** | **Unit** | **Outlet** |
-| Temperature (*F*) | Pressure Increase | Temperature |
-| Pressure (*F*) | Efficiency (*F*) | Pressure (*F*) |
-| Flow Rate (*F*) |   | Flow Rate |
-
-Table: Fully specified compressor model using a traditional approach. Fixed variables are tagged (*F*)
-
-In the equivalent variable replacement system, additional context is given about why each variable is set.
-
-| **Compressor Variables** | | |
-| --- | --- | --- |
-| **Inlet** | **Unit** | **Outlet** |
-| Temperature (*SV*) | Pressure Increase (*SV,R*) | Temperature |
-| Pressure (*SV*) | Efficiency (*SV*) | Pressure (*Rep. Pressure Increase*)|
-| Flow Rate (*SV*) |   | Flow Rate |
-
-Table: Compressor model using the variable replacement system, with Outlet Pressure replacing Pressure Increase.
-
-This provides a natural form of documentation for the model: The outlet pressure is being specified because it is needed to calculate the pressure increase across the model. On large systems, this explanation becomes particularly beneficial, as it becomes harder to identify why a property needs to be set, particularly when degrees of freedom are being specified indirectly.
+This provides a natural form of documentation for the model: The outlet pressure is being specified because it is needed to calculate the mechanical work of the compressor. On large systems, this explanation becomes particularly beneficial, as it becomes harder to identify why a property needs to be set, particularly when degrees of freedom are being specified indirectly.
 
 ### Example 2: Modifying a flowsheet
 
@@ -346,8 +353,6 @@ Because the number of unfixed variables must always be the same as the number of
 
 
 Consider this model of a pump connected to a heater, with all the state variables defined. The inlet conditions are state variables, and so is the mechanical work of the pump, and the heat duty of the heater. However, the mechanical work and heat duty are replaced by the temperature and pressure of the outlet; i.e the temperature and pressure will be used to calculate mechanical work and heat duty. 
-
-
 
 When the pump is removed from the flowsheet, the intermediate stream becomes the new inlet, and thus its temperature, pressure, and flow will need to be fixed. Because the outlet pressure was replacing Mechanical Work on the pump, and the pump has been removed, outlet pressure no longer needs to be fixed. Thus, the model is still fully specified.
 
@@ -380,9 +385,9 @@ Of particular note is the flow in the brine inlet. The factory does not record t
 
 ![A Heat pump in the Ahuora Platform.](assets/ahuora-interface.png)
 
-We have found that variable replacement methods work particularly well in a graphical user interface. 
+While this paper has focused on the theoretical advantages of a Variable Replacement methodology, a major reason we have developed this method of variable replacement is because it works particularly well in a graphical user interface. 
 
-The Ahuora Digital Twin Platform is a web-based process simulation environment. It is built using IDAES and Pyomo as the equation-oriented modelling libraries. 
+The Ahuora Digital Twin Platform is a web-based process simulation environment. It is built using IDAES and Pyomo as the equation-oriented modelling libraries as the simulation backend. 
 
 Each unit operation has a set of state variables, where the user can enter a value, and a set of calculated variables, which cannot be entered by the user. 
 If a user wants to fix a calculated variable, an appropriate state variable has to be chosen and "replaced". This makes the state variable a "guess": the user still needs to enter a value, but it is shown with no background color, to indicate to the user that it will be calculated when the flowsheet is solved. A message tells the user what variable is replacing it. The calculated variable then shows up like a state variable, with a message to show which variable it is replacing. This ensures the user is informed about which variable is being replaced by which.
@@ -392,7 +397,9 @@ If a user wants to fix a calculated variable, an appropriate state variable has 
 In the example image, the "Pressure Drop" state variable is fixed at 0 kPa. The "Mechanical Work" state variable in the Compressor is being replaced by the Pressure at the outlet stream.
 An initial guess for "Mechanical Work" may still be entered, which is updated to the correct value, which is based on the pressure specified at the outlet, when the model solves.
 
-Working with a GUI means that adding and removing unit operations is common, and Variable Replacement provides a sensible way to deal with adding or removing unit operations. When a unit operation is added, it's state variables and inlet ports are fixed by default to ensure the degrees of freedom are still zero. When a unit operation is removed, anything that is replacing it's state variables is also unfixed, and any inlet ports that were previously connected to the outlet of the unit operation are fixed, again keeping the degrees of freedom at zero. 
+One of the major advantages of Variable replacement is that it provides additional context for unit operations. In a GUI program, it is very easily to visually show that context by styling fixed State Variables, guesses, and calculated variables differently, and to show the links between variables.
+
+Working with a GUI also means that adding and removing unit operations is common, and Variable Replacement provides a sensible way to deal with adding or removing unit operations. When a unit operation is added, it's state variables and inlet ports are fixed by default to ensure the degrees of freedom are still zero. When a unit operation is removed, anything that is replacing it's state variables is also unfixed, and any inlet ports that were previously connected to the outlet of the unit operation are fixed, again keeping the degrees of freedom at zero. 
 
 The GUI also does not provide any way to write custom initialisation routines, because these are usually specified as python code and can be quite complex, so it is out of scope of the project. However, the multi-stage initialisation that naturally works with variable replacement helps to improve the reliability of solving. As guesses are specified for the state variables, these can be used in the initialisation routine. In particular, this enables us to specify any set of variables to define the conditions of an inlet stream, wheras IDAES does not have initialisation routines for any set of state variables and is typically limited to only a certain set of properties.
 
@@ -404,16 +411,12 @@ Variable replacement provides an alternative way of maintaining a square model i
 
 If state variables are defined on each block added to a model, those who use the model do not need to first square the problem. Degrees of freedom are kept at zero through any changes that are made to the flowsheet. The coupling between state variables and fixed variables provides a more interpretable way of reasoning about the model, bringing the relationships between variables to the forefront. Additionally, a set of state variables and initial guesses for them makes it simpler to build initialisation and scaling methods. The Ahuora Digital Twin Platform provides a case study on how this is beneficial, particularly when using a GUI tool for modelling. 
 
-While this paper introduces Variable Replacement as a method and purview it's potential benefits, further research is required to systematically evaluate the interpretability and initialisation advantages across different types of equation-oriented models. Nonetheless, these techniques hold promise to standardise the creation and use of libraries of equation oriented models. This would enable Equation-Oriented modelling to be used in a more maintainable way on large projects. 
-
-
+While this paper introduces Variable Replacement as a method and purview it's potential benefits, further research is required to systematically evaluate the interpretability and initialisation advantages across different types of equation-oriented models. Nonetheless, these techniques hold promise to standardise the creation and use of libraries of equation oriented models. This would enable Equation-Oriented modelling to be used in a more maintainable way on large projects, such as Process Digital Twins, in the future. 
 
 # Appendix
 
 ## Pyomo-Replace Source code
 
-A sample implementation of replacement logic in Pyomo, along with the initialisation tests, are avaliable at [https://github.com/bertkdowns/pyomo-replace](https://github.com/bertkdowns/pyomo-replace).
-
-## Geothermal Model
+A sample implementation of replacement logic in Pyomo, along with the initialisation tests and geothermal model example, are avaliable at [https://github.com/bertkdowns/pyomo-replace](https://github.com/bertkdowns/pyomo-replace).
 
 # Bibliography
