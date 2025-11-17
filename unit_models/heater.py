@@ -2,8 +2,8 @@ from idaes.models.unit_models import Heater
 from idaes.core import declare_process_block_class
 from idaes.models.unit_models.heater import HeaterData
 from model import register_block
-@declare_process_block_class("DutyHeater")
-class DutyHeaterData(HeaterData):
+@declare_process_block_class("SVHeater")
+class SVHeaterData(HeaterData):
     """
     Heater model, but it's set up with heat duty and deltaP as state variables.
     """
@@ -20,6 +20,10 @@ class DutyHeaterData(HeaterData):
         if self.config.has_pressure_change:
             state_vars.append(self.deltaP)
             self.deltaP.fix(0) 
+        if self.config.has_holdup:
+            state_vars.append(self.control_volume.volume)
+            state_vars.append(self.control_volume.energy_accumulation[0,"Liq"])
+            state_vars.append(self.control_volume.energy_accumulation[0,"Vap"])
         
         # Setup the default state variables.
         # Allow_degrees_of_freedom is set to True because 

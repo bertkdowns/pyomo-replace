@@ -1,5 +1,5 @@
 ---
-title: Variable Replacement as a technique for Managing Complexity in large Equation-Oriented Chemical Process Models
+title: "Variable Replacement: a novel technique for managing complexity in large Equation-Oriented Chemical Process Models"
 bibliography: refs.bib
 ---
 
@@ -8,7 +8,10 @@ bibliography: refs.bib
 # Abstract
 
 Chemical process models and Chemical Digital Twins frequently rely on equation-oriented models to encode the behaviour of a factory. As equation oriented models grow in complexity, reasoning about their structure becomes harder. 
-This paper proposes an alternative workflow to build equation oriented models, inspired by traditional control systems. An example of this approach is provided in the equation-oriented modelling tool Pyomo. 
+This paper proposes an alternative workflow to build equation oriented models, inspired by traditional control systems. 
+A set of properties for each unit operation is chosen as the set required to fully specify the state. 
+These can then be replaced by other variables as required for a specific case. 
+This approach is demonstrated in the  equation-oriented modelling tool Pyomo. 
 Benefits in model interpretability, maintentance, initialisation, and scaling methods are discussed. Various case studies demonstrate how processes can be modelled in this manner, and how these techniques may prove advantageous in a graphical user interface for chemical process design. 
 These methods may be adopted by the modelling community to make it easier to build and maintain large equation oriented models.
 
@@ -84,21 +87,28 @@ Additionally, all the variables and equations must be linerarly independent. Whe
 
 IDAES has methods to calculate the number of degrees of freedom, and if there are any over-defined or under-defined sets that make the model linearly dependent [@lee2024model]. Still, figuring out how many and which variables need to be "fixed" to make the model square can be a challenge. It becomes easier if the documentation of a block has defined exactly how many degrees of freedom it has, and which variables it expects to have fixed. 
 
-### Initialisation & Scaling
+### Initialisation <!--& Scaling-->
 
 In practice, Algebraic modelling problems are solved by initialising the unknown variables to a "best guess", and then performing an iterative search that gradually converges on the solution. In practice, this process does not always work, particularly when you are modelling non-convex systems and you start in the wrong region of convexity, or outside of the region your model was designed for [@casella2008beyond]. Even if the algorithm is able to converge, it may take significantly longer than if you had started with a good initial guess. 
 
 To help with this process, IDAES includes methods to initialise a model before solving. This involves solving part of a model, or using a simpler model to estimate what the true solution might be. However, these methods are often built around the assumption that you have fixed certain variables - if you are instead solving for those variables, the initialisation method is unlikely to work as well. 
 
-Scaling works in a similar manner. In order for mathematical solvers to find accurate solutions, variables need to be scaled so that they are all approximately the same magnitude. The amount that these variables need to be scaled by is called the *scaling factor*, and it is usually some order of magnitude. IDAES includes methods to calculate the scaling factors of all variables, once you have provided the scaling factor of a few key variables. 
+<!--Scaling works in a similar manner. In order for mathematical solvers to find accurate solutions, variables need to be scaled so that they are all approximately the same magnitude. The amount that these variables need to be scaled by is called the *scaling factor*, and it is usually some order of magnitude. IDAES includes methods to calculate the scaling factors of all variables, once you have provided the scaling factor of a few key variables. -->
 
 ## Related Work
 
 The field of static structural analysis has helped to solve some of the problems of squaring a model. In [@bunus2001debugging], a method is proposed to help debug when a model is singular, by using Dulmage-Mendelson Decomposition to identify sets of constraints that are over-constrained or under-constrained. These methods are commonly used in frameworks such as IDAES to help ensure a square model is valid [@lee2024model]. However, while these techniques are applicable to an entire "flat" system of equations, it is hard to apply them to an individual block without understanding of what external constraints are applied. Some preliminary work has been conducted to show that in some cases issues can be identified in this level [@nilsson2008type], but it is limited in its ability to detect errors and does not appear to have much uptake in systems such as Pyomo.
 
-As initialisation and scaling are also common problems across equation-oriented modelling tools, a number of approaches have been considered to help overcome the numeric issues that arise during solving. Simple strategies include initialising at random points, initialising at zero, initialising at a previously solved location, or solving a simpler model first [@lawrynczuk2022initialisation]. IDAES models generally take the latter approach, initialising parts of the model at a time, removing some of the more complex constraints or solving a relaxed problem first. Pyomo Network includes methods to run sequential decomposition, which initialises every block in order once any blocks it depends on have been initialised [@pyomo_network_doc].
+As initialisation is a common problem across equation-oriented modelling tools, a number of approaches have been considered to help overcome the numeric issues that arise during solving. Simple strategies include initialising at random points, initialising at zero, initialising at a previously solved location, or solving a simpler model first [@lawrynczuk2022initialisation]. IDAES models generally take the latter approach, initialising parts of the model at a time, removing some of the more complex constraints or solving a relaxed problem first. Pyomo Network includes methods to run sequential decomposition, which initialises every block in order once any blocks it depends on have been initialised [@pyomo_network_doc].
 
+
+
+<!-- I'm removing scaling as a topic for now. However if we bring it back, Doug's paper "Jacobian-based Model Diagnostics and Application to Equation Oriented Modeling of a Carbon Capture System" needs to be cited here
 Scaling is mostly a concern when variables have wildly different orders of magnitude. For example, when power is measured in order of $10^9$ $J$ but valve cross sectional areas are measured in the order of $10^{-2}$ $m^2$, the difference can quickly approach the precision of a floating-point number [@casella2017importance]. To remedy this, variables need to be scaled to similar orders of magnitude. Pyomo provides preprocessing tools for this. Often many variables require similar scaling factors based on the model definition, and so libraries such as IDAES provide tools to automatically propogate scaling factors across variables, after a few initial scaling factors are added [@idaes_scaling_doc]. However, the scaling factors the modeller needs to provide depend on the implementation of the model, and may be different to the variables that are fixed or the guesses that are required for initialisation.
+-->
+
+Taking a step back to look at the larger picture, Luyben et. al [@luyben1996design] observed and discussed the correlation between degrees of freedom in design-time models and in control models, especially for reactors and distillation columns. This is because the things you specify in design time, such as inlet flow rates or outlet temperatures, need to be controlled in the real factory, usually by valves. They argue that calculating the number of controlled parameters in a plant is an easier way to understand the degrees of freedom of a process than by trying to analyse the number of equations and variables in a model that can be adjusted independently. This is an interesting link between design and control specification that we will explore further in this paper.
+
 
 # A new method to define models: Variable Replacement
 
@@ -266,7 +276,7 @@ A useful analogy may be in the study of programming language theory. Functional 
 Variable replacement enforces a degree of regularity in the blocks that make up models, and in the overall structure. It provides a different paradigm in which to reason about equation oriented systems.
 
 1. It fundamentally removes the problem of Degrees of Freedom when defining a model.
-2. It simplifies the problem of initialisation, and provides a standardised basis for calculating scaling factors.
+2. It standardises initialisation routines, as long as guesses are provided for state variables. <!--, and provides a standardised basis for calculating scaling factors. -->
 3. The coupling of variables adds a level of interperetability to the model, which makes it easier to maintain and manipulate models.
 
 
@@ -278,7 +288,7 @@ Traditional model libraries such as IDAES provide the equations, and then all th
 
 Using a Variable Replacement approach, a set of state variables would be already defined by the model library, so the user would not need to square the model. There are zero degrees of freedom *by definition*. If a problem requires a variable to be fixed that is not a state variable, an appropriate^[i.e A state variable that would be part of the Dulmage-Mendelson overconstrained set if the other variable was fixed and nothing was unfixed] state variable must be unfixed too. As we add a degree of fredom every time we remove a degree of freedom, they 'cancel out' guaranteeing that we will continue to have a square model. This eliminates an entire class of errors with practical application of equation oriented models.
 
-## Simplified Initialisation and Scaling
+## Simplified Initialisation <!--and Scaling -->
 
 Initial guesses greatly increase the robustness of solving equation-oriented models. Modelling toolboxes such as IDAES provide methods to automatically define initial guesses based on fixed variables. However, if different variables are fixed to the ones the modelling library expects, these methods will not provide any benefit, and may even cause additional problems.
 
@@ -303,7 +313,9 @@ This was compared to the same model, at the same conditions, but with initialisa
 
 Table: Comparison of solving success with different combinations of variables, with and without staged initialisation.
 
+<!-- Removing this section as I am not comfortable with my knowledge of scaling factors and how to scale appropriately.
 In the same way as initialisation, calculating scaling factors depends on what values you already know. IDAES currently includes methods to calculate scaling factors for all other variables once you have entered scaling factors for a few key variables. If those few key variables are simply the state variables, it standardises the whole process of scaling as well. 
+-->
 
 
 ## Interpretability and model maintenance.
@@ -397,13 +409,17 @@ If a user wants to fix a calculated variable, an appropriate state variable has 
 In the example image, the "Pressure Drop" state variable is fixed at 0 kPa. The "Mechanical Work" state variable in the Compressor is being replaced by the Pressure at the outlet stream.
 An initial guess for "Mechanical Work" may still be entered, which is updated to the correct value, which is based on the pressure specified at the outlet, when the model solves.
 
-One of the major advantages of Variable replacement is that it provides additional context for unit operations. In a GUI program, it is very easily to visually show that context by styling fixed State Variables, guesses, and calculated variables differently, and to show the links between variables.
+Before using the variable replacement approach, we only limited the user to a fixed set of choices of variables for each unit operation. However, this reduced functionality significantly as there was no method to specify unit models indirectly, such as through downstream properties. We thought about trying a degrees of freedom approach, but were concerned that it would be much too confusing as it didn't provide the user with any direction on how to get started.
+
+One of the major advantages of Variable Replacement that we have noticed in a GUI is that it provides additional context for unit operations. In a GUI program, it is very easily to visually show that context by styling fixed State Variables, guesses, and calculated variables differently, and to show the links between variables.
 
 Working with a GUI also means that adding and removing unit operations is common, and Variable Replacement provides a sensible way to deal with adding or removing unit operations. When a unit operation is added, it's state variables and inlet ports are fixed by default to ensure the degrees of freedom are still zero. When a unit operation is removed, anything that is replacing it's state variables is also unfixed, and any inlet ports that were previously connected to the outlet of the unit operation are fixed, again keeping the degrees of freedom at zero. 
 
 The GUI also does not provide any way to write custom initialisation routines, because these are usually specified as python code and can be quite complex, so it is out of scope of the project. However, the multi-stage initialisation that naturally works with variable replacement helps to improve the reliability of solving. As guesses are specified for the state variables, these can be used in the initialisation routine. In particular, this enables us to specify any set of variables to define the conditions of an inlet stream, wheras IDAES does not have initialisation routines for any set of state variables and is typically limited to only a certain set of properties.
 
-After the model has been initialised once, previous solves can also be used for initialisation. While scaling methods have not been built into the Ahuora Digital Twin Platform at this time, they could also be based off scaling factors for the state variables in a similar manner to initialisation.
+<!--While scaling methods have not been built into the Ahuora Digital Twin Platform at this time, they could also be based off scaling factors for the state variables in a similar manner to initialisation.-->
+
+
 
 # Conclusion
 
