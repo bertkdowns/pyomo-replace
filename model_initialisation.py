@@ -113,14 +113,24 @@ def staged_initialise(blk: Block, opt, outlvl=idaeslog.NOTSET):
     2. if a state var has been replaced by something in this block,
        unfix it, fix that, and solve again. That should get you closer to the true solution.
     
-    This expects that the inlet and outlet state blocks have already been initialised.
+    This expects that the inlet and outlet state blocks have already been initialised, and that everything is
+    unfixed on this block execpt for the inlet state vars. 
+
+    A typical usage would be in conjunction with record_model_definition() and restore_model_definition() to ensure that the original model definition is preserved
+
+    Example:
+
+    blk_state = record_model_definition(blk)
+    unfix_everything(blk)
+    properties_in_state_block.initialize(hold_state=True,...) # we still want inlet states fixed during initialisation
+    properties_out_state_block.initialize(hold_state=False,...) # We still need the outlets to be initialised with good guesses 
+    staged_initialise(blk, opt) # perform the staged initialisation
+    restore_model_definition(blk, blk_state) # restore original fixed vars so the model definition is unchanged. this will also release any inlet state vars fixed during initialisation.
 
     """
     init_log = idaeslog.getInitLogger(blk.name, outlvl, tag="unit")
     solve_log = idaeslog.getSolveLogger(blk.name, outlvl, tag="unit")
 
-    # Peparation: Unfix everything first
-    
     fix_state_vars(blk)
     #fix_inlets(blk)
 

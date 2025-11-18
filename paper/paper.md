@@ -393,6 +393,22 @@ Those familiar with control systems may note that the variable replacement appro
 
 Of particular note is the flow in the brine inlet. The factory does not record the brine flow in, however it does record the total flow out. Thus, we can replace the Brine inlet flow with the Total flow, and the Brine flow will be back-calculated. Note that the brine outlet flow is specified much later downstream from the brine inlet. When this happens in conventional Degree of Freedom replacement systems, it can be very hard to understand why the brine outlet flow needs to be specified. By using a Variable Replacement approach, it is immediately obvious. Specifying stream properties downstream of an operation, sometimes significantly downstream, is a common practice when modelling, and Variable replacement makes it easier to understand why these properties need to be specified.
 
+# Case Study: Dynamic Tank
+
+![A model of a tank with valves controlling the inlet and the outlet. Properties with an asterisk (*) next to them are not time-indexed. The tank outlet pressure is referenced by the PID controller, but is not a state variable.](assets/dynamics.drawio.png)
+
+A dynamic flowsheet allows us to test a different aspect of our system: how indexed variables are handled. In this flowsheet, we have a steam tank, modelled as a Heater in idaes, with a constant volume and an inlet and outlet valve controlling the flow rate in and out of the tank. The flow into the tank is controlled by a PID controller, which is targeting a certain outlet pressure within the tank.
+
+Both the valves have two state variables: the valve coefficient, and the valve opening fraction. However, the valve coefficient is a constant property; it cannot be changed throughout the simulation. To indicate this, we have included an asterisk (*) next to them. In contrast, the valve opening fraction can be changed over time, and so in IDAES it is indexed by time. It is actually a set of variables, one variable for every time step across the simulation. Variables with an asterisk next to them cannot replace variables without an asterisk and vice versa, because the time indexed variables actually repreresent many degrees of freedom, while the others only represent one degree of freedom. However, in almost all cases it makes sense to treat the variable across time in the same manner (either you want to fix it, or you don't.)
+
+In this flowsheet, only two replacements are required. The first involves replacing the inlet flow with the outlet pressure. These can be replaced becasue a pressure difference between the inlet and the outlet is what drives the fluid through the system. The flow can be calculated from the valve pressure-flow correllation. Both pressure and flow are time-indexed properties, so they each represent the same number of degrees of freedom. Note that with our initialisation strategy, we start with a guess for flow, and then we initialise with that. After initialisation is completed, the flowsheet re-solves with the correct outlet pressure fixed, recalculating what the true flow value is.
+
+The second replacement involves replacing the valve opening fraction with the setpoint. The PID controller sets the value of the valve opening fraction, so the valve opening fraction no longer needs to be specified. This goes against the general logic of variable replacement. However, the setpoint of the PID controller needs to be specified. So we can add a replacement to say that the setpoint replaces the valve opening fraction. This is a simple solution that can be done when the PID controller is connected up to the valve opening fraction.
+
+Initial Material Accumulation and Initial Energy Accumulation can be treated as additional state variables if it is appropriate. It would be feasible to use the replacement logic to replace them with Initial Material Holdup and Initial Energy Holdup. However, typically dynamic flowsheets start with a steady-state assumption, and all accumulation terms are fixed to zero. 
+
+This case study successfully demonstrates that the variable replacement logic can easily be extended to more complex flowsheet scenarios involving dynamics or other indexed variables.
+
 # Case Study: Ahuora Digital Twin Platform
 
 ![A Heat pump in the Ahuora Platform.](assets/ahuora-interface.png)
