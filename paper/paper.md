@@ -206,28 +206,51 @@ We now prove that this new model can be represented in terms of the original mod
 As S' is an input to all these functions, we partially apply these functions,
 
 $$
-G_{1,A}(R) : R ↦ G_1(S', R)  \text{, \;So } G_{1,A}(R) = X
+A(R) : R ↦ G_1(S', R)  \text{, \;So } A(R) = X
 $$
 $$
-G_{2,A}(R) : R ↦ G_2(S', R) \text{, \;So } G_{2,A}(R) = C'
+B(R) : R ↦ G_2(S', R) \text{, \;So } B(R) = C'
 $$
 
 $$
-G_{1,A}'(X) : X ↦ G_1'(S', X) \text{, \;So } G_{1,A}(X) = R
+A'(X) : X ↦ G_1'(S', X) \text{, \;So } A'(X) = R
 $$
 $$
-G_{2,A}'(X) : X ↦ G_2'(S', X) \text{, \;So } G_{2,A}(X) = C'
+B'(X) : X ↦ G_2'(S', X) \text{, \;So } B'(X) = C'
 $$
 
 We note
 
 $$
-G_{1,A}(    G_{1,A}'(X)      )  = X
+A( A'(X) )  = X
 $$
 
-So $G_{1,A}$ is the inverse of $G_{1,A}'$
+So $A$ is the inverse of $A'$
 
-so $G_1'(S', X)   <=> inv(G_{1,A})$ 
+Note that for this to be possible, $A$ must be invertible, which implies $|R| = |X|$, i.e you must add as many variables as you remove.
+
+This implies that
+
+$$
+G1'(S', G_1(S', R )) ⟺ R
+$$
+$$
+G1(S', G_1'(S', X )) ⟺ X
+$$
+
+We can now give a definition for $F'$ in terms of the original functions:
+
+$$
+F' :  (S',R)  ↦  F(S', A^{-1}(S')) \text{ where } A :  S'  ↦ G_1(S', R)
+$$
+$$
+G1' :  (S',R)  ↦  G1(S', A^{-1}(S')) \text{ where } A :  S'  ↦ G_1(S', R)
+$$
+$$
+G2' :  (S',R)  ↦  G2(S', A^{-1}(S')) \text{ where } A :  S'  ↦ G_1(S', R)
+$$
+
+Thus, as long as $A$ is invertible, it is possible to redefine the model in terms of a replaced set of variables.
 
 
 
