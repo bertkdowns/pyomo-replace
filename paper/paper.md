@@ -132,6 +132,105 @@ Starting with all the state variables fixed means you never have a under-defined
 
 This section outlines how Variable Replacement is defined on an equation-oriented model, borrowing terminology and concepts from the Pyomo equation-oriented modelling ecosystem.
 
+### Mathematical Definition
+
+#### Equation-Oriented Model
+
+We represent an equation oriented model as two functions:
+
+$$
+F(S) = 0
+$$
+
+where $S$ is a set of variables with real values, and
+
+$$
+G(S) = C
+$$
+
+where $C$ is a set of variables that are calculated.
+
+The values of variables in $S$ are calculated to satisfy all constraints in the function $F$ and can be used to calculate all other variables via the function $G$.
+
+We note that if there is an exact solution, $F(S)$ must be square. $F(S)$ is square if $|F(S)|  = |S|$. More generally, we define a formula for degrees of freedom:
+
+$$
+DOF(F,S) = |F(S)| - |S| 
+$$
+
+For there to be an exact solution, $DOF(F,S)$ must be zero. Positive degrees of freedom means more variables are required to define the system, Negative degrees of freedom means that too many variables are defined.
+
+#### Variable Replacement
+
+Let us choose a set of variables $R ⊆ S$ to replace. We can separate these variables from the remainder and rewrite the definitions of the functions $F$ and $G$ as
+
+
+$$
+F(S', R) = 0
+$$
+$$
+G(S', R) = C
+$$
+$$
+\text{Where $R ⊆ S$ and $S' = S \; \backslash \; R$}
+$$
+
+Let us also choose a set of variables $X ⊆ C$ that we want to define instead. We can separate these variables from the other calculated variables, splitting $G$ into two functions $G_1$ and $G_2$
+
+$$
+G_1(S', R) = X
+$$
+$$
+G_2(S', R) = C'
+$$
+$$
+\text{ where } C' = C \; \backslash \; X
+$$
+
+We now construct a new model that uses the calculated variables $X$ in the model definition instead of the state variables in $R$. We will use the functions $F'$ and $G'$ to represent this model, so
+
+$$
+F'(S', X) = 0
+$$
+$$
+G_1'(S', X) = R  
+$$
+$$
+G_2'(S', X) = C'  
+$$
+
+#### Proof
+
+We now prove that this new model can be represented in terms of the original model.
+
+As S' is an input to all these functions, we partially apply these functions,
+
+$$
+G_{1,A}(R) : R ↦ G_1(S', R)  \text{, \;So } G_{1,A}(R) = X
+$$
+$$
+G_{2,A}(R) : R ↦ G_2(S', R) \text{, \;So } G_{2,A}(R) = C'
+$$
+
+$$
+G_{1,A}'(X) : X ↦ G_1'(S', X) \text{, \;So } G_{1,A}(X) = R
+$$
+$$
+G_{2,A}'(X) : X ↦ G_2'(S', X) \text{, \;So } G_{2,A}(X) = C'
+$$
+
+We note
+
+$$
+G_{1,A}(    G_{1,A}'(X)      )  = X
+$$
+
+So $G_{1,A}$ is the inverse of $G_{1,A}'$
+
+so $G_1'(S', X)   <=> inv(G_{1,A})$ 
+
+
+
 ### Model
 
 An equation-oriented model can be specified as a set of Blocks, with each block containing variables and constraints between variables. In this context, a Block does not include constraints that reference anything outside that block. However, a Block may contain Ports, which provide a method of connecting Blocks together.
