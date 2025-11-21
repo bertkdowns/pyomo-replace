@@ -136,123 +136,59 @@ This section outlines how Variable Replacement is defined on an equation-oriente
 
 #### Equation-Oriented Model
 
-We represent an equation oriented model as two functions:
+Let S be the full ordered vector of model variables and let F and G be the constraint and calculation mappings:
+$F : ℝ^{n} → ℝ^{m}$, written as $F(S) = 0$  ($m$ constraints on $n$ variables).
 
-$$
-F(S) = 0
-$$
-
-where $S$ is a set of variables with real values, and
-
-$$
-G(S) = C
-$$
+$G : ℝ^{n} → ℝ^{p}$, written as $G(S) = C$ ($p$ calculated quantities).
 
 where $C$ is a set of variables that are calculated.
 
-The values of variables in $S$ are calculated to satisfy all constraints in the function $F$ and can be used to calculate all other variables via the function $G$.
+The values of variables in $S$ are calculated to satisfy all constraints in the function $F$ and can be used to calculate all other calculated quantities in the model via the function $G$.
 
-We note that if there is an exact solution, $F(S)$ must be square. $F(S)$ is square if $|F(S)|  = |S|$. More generally, we define a formula for degrees of freedom:
-
-$$
-DOF(F,S) = |F(S)| - |S| 
-$$
+We denote |S| = n, |F| = m and define the degrees of freedom as
+DOF(F,S) = n − m.
+A model is square (structurally determined) when DOF(F,S) = 0, and the system of equations represented by F is linearly independent.
 
 For there to be an exact solution, $DOF(F,S)$ must be zero. Positive degrees of freedom means more variables are required to define the system, Negative degrees of freedom means that too many variables are defined.
 
 #### Variable Replacement
 
-Let us choose a set of variables $R ⊆ S$ to replace. We can separate these variables from the remainder and rewrite the definitions of the functions $F$ and $G$ as
+Let us choose a set of variables $R ⊆ S$ to replace. We partition S into two disjoint subsets $S = S' ∪ R$ with R the set of state variables proposed for replacement and S' the remaining state variables. We also partition the calculated variables $C = X ∪ C'$ where X are the calculated quantities we intend to fix instead of R. Assume
+$|R| = |X| = r$.
 
 
-$$
-F(S', R) = 0
-$$
-$$
-G(S', R) = C
-$$
-$$
-\text{Where $R ⊆ S$ and $S' = S \; \backslash \; R$}
-$$
-
-Let us also choose a set of variables $X ⊆ C$ that we want to define instead. We can separate these variables from the other calculated variables, splitting $G$ into two functions $G_1$ and $G_2$
+G can now be written as
 
 $$
-G_1(S', R) = X
+G_1 : ℝ^{|S'|} × ℝ^{r} → ℝ^{r},   G_1(S', R) = X
 $$
 $$
-G_2(S', R) = C'
-$$
-$$
-\text{ where } C' = C \; \backslash \; X
+G_2 : ℝ^{|S'|} × ℝ^{r} → ℝ^{p−r}, G_2(S', R) = C'
 $$
 
-We now construct a new model that uses the calculated variables $X$ in the model definition instead of the state variables in $R$. We will use the functions $F'$ and $G'$ to represent this model, so
+The replacement operation requires, for each fixed S', that the map
 
 $$
-F'(S', X) = 0
-$$
-$$
-G_1'(S', X) = R  
-$$
-$$
-G_2'(S', X) = C'  
+A_{S'} : ℝ^{r} → ℝ^{r},  A_{S'}(x) := G_1(S', x)
 $$
 
-#### Proof
+be (locally) bijective on the region of interest. A sufficient condition is that the Jacobian $∂A_{S'}/∂r$ is nonsingular at the operating point, which guarantees a local inverse $A_{S'}^{-1} : R^{r} → R^{r}$.
 
-We now prove that this new model can be represented in terms of the original model.
+When such an inverse exists, define the replaced model with independent variables (S', X) by
 
-As S' is an input to all these functions, we partially apply these functions,
+$F'(S', X) := F(S', A_{S'}^{-1}(X))$  (constraints expressed in terms of S' and X)
 
-$$
-A(R) : R ↦ G_1(S', R)  \text{, \;So } A(R) = X
-$$
-$$
-B(R) : R ↦ G_2(S', R) \text{, \;So } B(R) = C'
-$$
+$G_2'(S', X) := G_2(S', A_{S'}^{-1}(X))$   (remaining calculated quantities)
 
-$$
-A'(X) : X ↦ G_1'(S', X) \text{, \;So } A'(X) = R
-$$
-$$
-B'(X) : X ↦ G_2'(S', X) \text{, \;So } B'(X) = C'
-$$
+Optionally one may define $R = G_1'(S', X) := A_{S'}^{-1}(X)$ to recover the replaced state variables.
 
-We note
+### Remarks and preconditions
 
-$$
-A( A'(X) )  = X
-$$
-
-So $A$ is the inverse of $A'$
-
-Note that for this to be possible, $A$ must be invertible, which implies $|R| = |X|$, i.e you must add as many variables as you remove.
-
-This implies that
-
-$$
-G1'(S', G_1(S', R )) ⟺ R
-$$
-$$
-G1(S', G_1'(S', X )) ⟺ X
-$$
-
-We can now give a definition for $F'$ in terms of the original functions:
-
-$$
-F' :  (S',R)  ↦  F(S', A^{-1}(S')) \text{ where } A :  S'  ↦ G_1(S', R)
-$$
-$$
-G1' :  (S',R)  ↦  G1(S', A^{-1}(S')) \text{ where } A :  S'  ↦ G_1(S', R)
-$$
-$$
-G2' :  (S',R)  ↦  G2(S', A^{-1}(S')) \text{ where } A :  S'  ↦ G_1(S', R)
-$$
-
-Thus, as long as $A$ is invertible, it is possible to redefine the model in terms of a replaced set of variables.
-
-
+- The size condition $|R| = |X|$ is necessary but not sufficient for replacement; bijectivity (or local invertibility) of $A_{S'}$ is required.
+- In practice, invertibility is usually checked via rank or Jacobian nonsingularity; failure implies the replacement is not structurally valid.
+- The inverse $A_{S'}^{-1}$ generally depends on S', so all formulas must reflect that dependence.
+- Replacement preserves DOF: replacing r state variables with r fixed calculated variables keeps n − m unchanged (the choice of independent coordinates changes but structural determinacy does not).
+- Replacement can be iterated provided the same size and invertibility conditions hold at each step; each iteration produces a new model of the same form (constraints $↦$ variables, variables $↦$ calculated values).
 
 ### Model
 
