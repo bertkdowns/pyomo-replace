@@ -190,6 +190,36 @@ Optionally one may define $R = G_1'(S', X) := A_{S'}^{-1}(X)$ to recover the rep
 - Replacement preserves DOF: replacing r state variables with r fixed calculated variables keeps n − m unchanged (the choice of independent coordinates changes but structural determinacy does not).
 - Replacement can be iterated provided the same size and invertibility conditions hold at each step; each iteration produces a new model of the same form (constraints $↦$ variables, variables $↦$ calculated values).
 
+### Example
+
+Suppose we had the following system of equations to model a simple heater in terms of mass flow ($M_i$ and $M_o$, inlet and outlet flow respectively), temperature ($T_i$ and $T_d$), Heat Duty ($H$), temperature difference ($T_d$), and Heat Capacity ($C_p$)
+
+$$
+M_o = M_i
+$$
+$$
+T_o = T_i + T_d
+$$
+$$
+T_d =  H * C_p * M_i
+$$
+
+With three equations, we can only have three unknowns. Thus we have $M_o$, $T_o$, and $T_d$, as the unknowns and the state variables $S = \{M_i, T_i, H, C_p\}$ 
+
+The unknowns can be calculated through the function G:
+
+$$
+G_{M_o} : S → M_i
+$$
+$$
+G_{T_o} : S → T_i + G_{T_d}(S)
+$$
+$$
+G_{T_d} : S → H * C_p * M_i
+$$
+
+
+
 ### Model
 
 An equation-oriented model can be specified as a set of Blocks, with each block containing variables and constraints between variables. In this context, a Block does not include constraints that reference anything outside that block. However, a Block may contain Ports, which provide a method of connecting Blocks together.
