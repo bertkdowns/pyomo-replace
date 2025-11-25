@@ -157,7 +157,7 @@ $$
 \mathcal(S) = \{ x ∈ R^n : C(x) = 0, F(x) = 0 \}
 $$
 
-The feasible solutions to $x$ are in the zero set of both $C(x)$ and $F(x)$, that is, they satisfy all constraints in the system.
+The feasible solutions to $x$ are in the zero set of both $C(x)$ and $F(x)$, that is, they satisfy all constraints in the system with.
 
 ### Degrees of freedom
 
@@ -185,7 +185,7 @@ $$
 
 where $h = C ∪ F$, the set of all the constraints, including the constraints fixing variables.
 
-Where the matrix is square, the Degrees of Freedom is zero. 
+Where the Jacobian is square, the Degrees of Freedom is zero.
 
 ### Replacement
 
@@ -195,45 +195,117 @@ $$
 DoF(\mathcal{M}) = |x| - |F| - |C|  = 0
 $$
 
-Fixing a variable $V_i$ at index $i$ involves adding a constraint $c_i$ to $C$. We define $C' = C ∪ \{c_i\}$. However, if this is used in a model, $DoF((x,C',F)) = -1$ so the model would be overdefined and potentially have no solutions. 
+Fixing a variable $V_i$ at index $i$ involves adding a constraint $f_i$ to $F$. We define $F' = F ∪ \{f_i\}$. However, if this is used in a model, $DoF((x,C,F')) = -1$ so the model would be overdefined and potentially have no solutions. 
 
-To solve this, we also choose an existing fixed variable to unfix, by removing it's constraint $c_j$ from $C$. This gives us a new set of constraints
+To solve this, we also choose an existing fixed variable to unfix, by removing it's constraint $f_j$ from $F$. This gives us a new set of constraints
 
 $$
-C_{new} = (C \backslash \{c_j\}) ∪ \{c_i\}
+F_{new} = (C \backslash \{f_j\}) ∪ \{f_i\}
 $$
 
 and a new model 
 
 $$
-\mathcal{M}_{new} = (x,C_{new},F)
+\mathcal{M}_{new} = (x,C,F_{new})
 $$
 
 
 that maintains the condition that 
 $DoF(\mathcal{M}_{new}) = 0$.
 
+### An example
 
+Below is a set of equations to model the behaviour of a heater:
 
-### Model
+$$
+M_i = M_o
+$$
+$$
+T_i + T_d = T_o 
+$$
+$$
+T_d = \frac{H . C_p}{M_i} 
+$$
 
-An equation-oriented model can be specified as a set of Blocks, with each block containing variables and constraints between variables. In this context, a Block does not include constraints that reference anything outside that block. However, a Block may contain Ports, which provide a method of connecting Blocks together.
+Where $M_i$ and $M_o$ are the mass in and out respectively; $T_i$, $T_o$, and $T_d$ are the Temperature in, Temperature out, and Temperature difference; $H$ is the amount of heat energy added to the system, and $C_p$ is the heat capacity of the fluid.
+
+These form a vector of variables $x$:
+
+$$
+x :=
+\begin{pmatrix}
+M_i \\
+M_o \\
+T_i \\
+T_d \\
+T_o \\
+H \\
+C_p \\
+\end{pmatrix}
+$$
+
+And the equations can be rearranged into a functional form where C(x) = 0:
+
+$$
+C :=
+\begin{Bmatrix}
+x → M_i - M_o \\
+x → T_i + T_d - T_o  \\
+x → T_d - \frac{H . C_p}{M_i} 
+\end{Bmatrix}
+$$
+
+As $|x| - |C| = 3$, we need to fix 4 variables to have zero degrees of freedom. Let's say we choose $M_i = 1, T_i = 25, C_p = 2, H = 6$. Then we can define $F$ as follows:
+
+$$
+F :=
+\begin{Bmatrix}
+x → M_i - 1 \\
+x → T_i - 25  \\
+x → C_p -2 \\
+x → H - 6 \\
+\end{Bmatrix}
+$$
+
+This defines the initial model, which can be solved to an exact solution. Now, let's say we instead want to model when $T_o = 35$. We cannot fix this variable unless we choose something else to unfix. Let's choose to unfix $H$, and define an updated set of fixed variables:
+
+$$
+F' :=
+\begin{Bmatrix}
+x → M_i - 1 \\
+x → T_i - 25  \\
+x → C_p -2 \\
+x → T_o - 35 \\
+\end{Bmatrix}
+$$
+
+This model will still have zero degrees of freedom as the number of variables and constraints is the same as the original. 
+
+Note that replacing fixed variables does not guarantee that the problem is still well-posed, this still requires the modeller to choose an appropriate constraint to replace. Methods such as Dulmage-Mendelson Decomposition can be used to help validate this, as discussed in [@lee2024model].
+
+## A reference implementation: pyomo-replace
+
+To aid in evaluating the advantages of a variable replacement approach to equation-oriented modelling, we have created a small python package built on IDAES and pyomo, called pyomo-repace. It demonstrates the principles of variable replacement in a format as similar as possible to standard IDAES modelling, to make it easier to draw comparisons between the two approaches. 
+
+Pyomo-replace contains methods to keep track of the state variables in an IDAES model, and what variables are replacing them. The list of state variables and replacements can be easily printed to the screen to help explain the model structure. 
+
+In Pyomo, an equation-oriented model is specified as a set of Blocks, with each block containing variables and constraints between variables. A Block may contain Ports, which provide a method of connecting Blocks together.
 
 A Port is simply a collection of variables on a block. A port is specified to be either an Inlet Port or an Outlet Port. An Inlet port may be connected to an Outlet port containing an equivalent collection of variables. The inlet and outlet port do not need to be on the same block. Connecting two ports creates an equality constraint between the variable on the Outlet and the variable on the Inlet, that is, the variable on the inlet is defined to be equal to the corresponding variable on the outlet port. 
 
-In chemical engineering, an equation-oriented model typically represents a flowsheet, a Block typically represents a unit operation, and Inlet and Outlet Ports represent inlets and outlets of a unit operation. 
+The IDAES framework makes it easy to model chemical engineering problems in pyomo. An equation-oriented model typically represents a chemical flowsheet, a Block typically represents a unit operation, and Inlet and Outlet Ports represent inlets and outlets of a unit operation. 
 
 ### State Variables
 
-Because each block contains a set of variables and constraints, it can be considered an independent system of equations and solved independently if the appropriate number of variables are fixed to make the problem square. Variable replacement requires defining a set of "*State Variables*", which, when all fixed, fully define the model. 
+Because each block contains a set of variables and constraints, it can be considered an independent system of equations and solved independently if the appropriate number of variables are fixed to make the problem square. We call the initial set of fixed variables the "*State Variables*". 
 
-The state variables are chosen by first fixing all inlet variables. All inlet variables are automatically considered state variables, if and only if the inlet is not connected to an outlet. Then, additional variables are fixed in the model until the model is square. These variables are also considered state variables.
+The state variables are chosen by first fixing all inlet variables. By convention, all inlet variables are automatically considered state variables, if and only if the inlet is not connected to an outlet. Then, additional variables are fixed in the model until the model is square. These variables are also considered state variables.
 
-The set of state variables for a block is defined by the block itself, and the set of state variables cannot change. They may be unfixed, but only following certain rules as discussed subsequently. Typically, the set of state variables would be defined by the author of the block. As Blocks are an abstraction designed to be reused, this could be the developer of a library of modelling components, rather than the modeller of a specific flowsheet.
+Typically, the set of state variables would be defined by the author of the block. As Blocks are an abstraction designed to be reused, this could be the developer of a library of modelling components, rather than the modeller of a specific flowsheet.
 
 ### Building a model
 
-A model is then built out of a series of blocks. By default, all state variables are fixed, and all unconnected inlets are fixed, and so there will be no degrees of freedom. This fully specifies the model, as all operations are fully defined: either explicitly, or based on the outlet conditions of other operations.
+In IDAES, a model is built from a number of blocks. By default, all state variables are fixed, and all unconnected inlets are fixed, and so there will be no degrees of freedom. This fully specifies the model, as all operations are fully defined: either explicitly, or based on the outlet conditions of other operations.
 
 ### Replacing Variables.
 
@@ -243,7 +315,7 @@ Once a model is built, different variables can be fixed instead of the state var
 - To prevent the model becoming over-defined, a state variable must be chosen and unfixed. We say this state variable has been "replaced" with the new variable.
 - The state variable must be chosen such that all equations in the model are still linearly independent. This can be done by choosing a state variable that is part of the Dulmage-Mendelson Overconstrained set when the new variable was fixed and the model was at -1 degrees of freedom. 
 
-Metadata about which variables are replacing which state variables should be stored. If a variable is ever unfixed, the coresponding state variable must be fixed again. 
+Metadata about which variables are replacing which state variables is stored. If a variable is ever unfixed, the state variable it replaced must be fixed again. 
 
 As long as these conditions are met, the model will stay at zero degrees of freedom and remain structurally valid. These rules are the essence of the variable replacement methodology.
 
@@ -253,7 +325,7 @@ As long as these conditions are met, the model will stay at zero degrees of free
 
 We have previously discussed how pyomo allows indexing variables by a constant set of indexes. This provides a convienient grouping of variables.
 
-One Indexed Variable may be replaced by another Indexed Variable so long as the size of the indexed variables (the number of items in it's index set) are the same, and the model is still structurally sound afterwards; i.e there are no over or underconstrained variable sets. This is a convientent abstraction as it avoids having to replace each individual variable in a set. For example, in a tank, you could specify level over time instead of flow rate out of the tank over time. As long as they are both indexed by time, it is fine.
+One Indexed Variable may be replaced by another Indexed Variable so long as the size of the indexed variables (the number of items in it's index set) are the same, and the model is still structurally sound afterwards; i.e there are no over or underconstrained variable sets. This is a convientent abstraction as it avoids having to replace each individual variable in a set. For example, in a tank, you could specify level over time instead of flow rate out of the tank over time. As long as they are both indexed by time, there will be no problems as the number of constraints removed is equal to the number of constraints added.
 
 #### Tear Guesses in Network Loops
 
@@ -271,11 +343,6 @@ Optimisation problems do not have zero degrees of freedom, and so this technique
 
 Additionally, knowing the list of state variables may still provide good context for optimisation, as any state variables you unfix are the ones that you are calculating an optimum value for.
 
-## A reference implementation: pyomo-replace
-
-To aid in evaluating the advantages of a variable replacement approach to equation-oriented modelling, we have created a small python package built on IDAES and pyomo, called pyomo-repace. It demonstrates the principles of variable replacement in a format as similar as possible to standard IDAES modelling, to make it easier to draw comparisons between the two approaches. 
-
-Pyomo-replace contains methods to keep track of the state variables in an IDAES model, and what variables are replacing them. The list of state variables and replacements can be easily printed to the screen to help explain the model structure. 
 
 ### An example in IDAES.
 
