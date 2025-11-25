@@ -120,11 +120,11 @@ $$
 v = kx
 $$
 
-That is, the velocity $v$ of a car on flat ground is equal to some performance constant $k$ multiplied by the amount the accellerator pedal is depressed, $x$. If the accellerator is depressed further, the velocity of the car will increase. This can easily be modelled in an Algebraic Modelling language, with either the velocity of the accelleration fixed to fully define the system. In the physical world, the velocity of the car cannot be set; the only thing that can really be set is the position of the accellerator pedal. However, control theory allows you to instead hold $v$ constant, calculating the appropriate value of $x$ for that to be the case. 
+That is, the velocity $v$ of a car on flat ground is equal to some performance constant $k$ multiplied by the amount the accelerator pedal is depressed, $x$. If the accelerator is depressed further, the velocity of the car will increase. This can easily be modelled in an Algebraic Modelling language, with either the velocity of the acceleration fixed to fully define the system. In the physical world, the velocity of the car cannot be set; the only thing that can really be set is the position of the accelerator pedal. However, control theory allows you to instead hold $v$ constant, calculating the appropriate value of $x$ for that to be the case. 
 
-The intuition behind variable replacement is similar. There are some variables that it is easy to think of as fully defining the system; we will call them "state variables". They are all linearly independent. All other variables can be defined in terms of these state variables^[This is analogus to the concept of a *critical set* in combinatorial design theory.]. In this example, the position of the accellerator pedal makes the most intuitive sense as the state variable, that is what you set to control the car's speed.
+The intuition behind variable replacement is similar. There are some variables that it is easy to think of as fully defining the system; we will call them "state variables". They are all linearly independent. All other variables can be defined in terms of these state variables^[This is analogus to the concept of a *critical set* in combinatorial design theory.]. In this example, the position of the accelerator pedal makes the most intuitive sense as the state variable, that is what you set to control the car's speed.
 
-It follows by definition that if all state variables are fixed in a model, then the model will be fully defined, and have zero degrees of freedom. Fixing any other variable would cause the system to be over-defined. Thus, similar to in control theory, if you wanted to hold the velocity constant, you need to be able to adjust the amount the accellerator pedal is depressed. This is the fundamental principle behind variable replacement: start with all your state variables defined, and then if you want to set something else, you must choose a state variable to "replace", or unfix.
+It follows by definition that if all state variables are fixed in a model, then the model will be fully defined, and have zero degrees of freedom. Fixing any other variable would cause the system to be over-defined. Thus, similar to in control theory, if you wanted to hold the velocity constant, you need to be able to adjust the amount the accelerator pedal is depressed. This is the fundamental principle behind variable replacement: start with all your state variables defined, and then if you want to set something else, you must choose a state variable to "replace", or unfix.
 
 Starting with all the state variables fixed means you never have a under-defined model. Unfixing a state variable every time you fix something else means you never over-define your model. This makes it much clearer how your model is intended to be used. Initialisation and scaling methods also become much simpler if guesses are provided for all the state variables, as you only need to define one way to initialise/scale your model. 
 
@@ -134,89 +134,84 @@ This section outlines how Variable Replacement is defined on an equation-oriente
 
 ### Mathematical Definition
 
-#### Equation-Oriented Model
-
-Let S be the full ordered vector of model variables and let F and G be the constraint and calculation mappings:
-$F : ℝ^{n} → ℝ^{m}$, written as $F(S) = 0$  ($m$ constraints on $n$ variables).
-
-$G : ℝ^{n} → ℝ^{p}$, written as $G(S) = C$ ($p$ calculated quantities).
-
-where $C$ is a set of variables that are calculated.
-
-The values of variables in $S$ are calculated to satisfy all constraints in the function $F$ and can be used to calculate all other calculated quantities in the model via the function $G$.
-
-We denote |S| = n, |F| = m and define the degrees of freedom as
-DOF(F,S) = n − m.
-A model is square (structurally determined) when DOF(F,S) = 0, and the system of equations represented by F is linearly independent.
-
-For there to be an exact solution, $DOF(F,S)$ must be zero. Positive degrees of freedom means more variables are required to define the system, Negative degrees of freedom means that too many variables are defined.
-
-#### Variable Replacement
-
-Let us choose a set of variables $R ⊆ S$ to replace. We partition S into two disjoint subsets $S = S' ∪ R$ with R the set of state variables proposed for replacement and S' the remaining state variables. We also partition the calculated variables $C = X ∪ C'$ where X are the calculated quantities we intend to fix instead of R. Assume
-$|R| = |X| = r$.
-
-
-G can now be written as
+An equation-oriented model be viewed mathematically as 
 
 $$
-G_1 : ℝ^{|S'|} × ℝ^{r} → ℝ^{r},   G_1(S', R) = X
-$$
-$$
-G_2 : ℝ^{|S'|} × ℝ^{r} → ℝ^{p−r}, G_2(S', R) = C'
+\mathcal{M} = (x, C, F)
 $$
 
-The replacement operation requires, for each fixed S', that the map
+where:
+
+
+$x = (x_1,...,x_n )$ is a vector of $n$ variables,
+
+$C = \{c_i(x) = 0 : i = 1,...,m\}$ is a set constraints of any form,
+
+$F = \{f_i(x) = x_i - \bar{x_i}  = 0 : i ∈ S \}, S ⊆ \{1,...,n\}$  is a set of constraints fixing the \textit{variable} $x_i$ to the \textit{value} $\bar{x_i}$, for a subset of the variables $S$.
+
+
+
+The set of feasible solutions can be given as:
 
 $$
-A_{S'} : ℝ^{r} → ℝ^{r},  A_{S'}(x) := G_1(S', x)
+\mathcal(S) = \{ x ∈ R^n : C(x) = 0, F(x) = 0 \}
 $$
 
-be (locally) bijective on the region of interest. A sufficient condition is that the Jacobian $∂A_{S'}/∂r$ is nonsingular at the operating point, which guarantees a local inverse $A_{S'}^{-1} : R^{r} → R^{r}$.
+The feasible solutions to $x$ are in the zero set of both $C(x)$ and $F(x)$, that is, they satisfy all constraints in the system.
 
-When such an inverse exists, define the replaced model with independent variables (S', X) by
+### Degrees of freedom
 
-$F'(S', X) := F(S', A_{S'}^{-1}(X))$  (constraints expressed in terms of S' and X)
-
-$G_2'(S', X) := G_2(S', A_{S'}^{-1}(X))$   (remaining calculated quantities)
-
-Optionally one may define $R = G_1'(S', X) := A_{S'}^{-1}(X)$ to recover the replaced state variables.
-
-### Remarks and preconditions
-
-- The size condition $|R| = |X|$ is necessary but not sufficient for replacement; bijectivity (or local invertibility) of $A_{S'}$ is required.
-- In practice, invertibility is usually checked via rank or Jacobian nonsingularity; failure implies the replacement is not structurally valid.
-- The inverse $A_{S'}^{-1}$ generally depends on S', so all formulas must reflect that dependence.
-- Replacement preserves DOF: replacing r state variables with r fixed calculated variables keeps n − m unchanged (the choice of independent coordinates changes but structural determinacy does not).
-- Replacement can be iterated provided the same size and invertibility conditions hold at each step; each iteration produces a new model of the same form (constraints $↦$ variables, variables $↦$ calculated values).
-
-### Example
-
-Suppose we had the following system of equations to model a simple heater in terms of mass flow ($M_i$ and $M_o$, inlet and outlet flow respectively), temperature ($T_i$ and $T_d$), Heat Duty ($H$), temperature difference ($T_d$), and Heat Capacity ($C_p$)
+The number of degrees of freedom of the model is defined as:
 
 $$
-M_o = M_i
-$$
-$$
-T_o = T_i + T_d
-$$
-$$
-T_d =  H * C_p * M_i
+\text{DoF} = |x| - |F| - |C| 
 $$
 
-With three equations, we can only have three unknowns. Thus we have $M_o$, $T_o$, and $T_d$, as the unknowns and the state variables $S = \{M_i, T_i, H, C_p\}$ 
+Or the number of variables minus the number of fixed variables minus the number of constraints.
 
-The unknowns can be calculated through the function G:
+If all constraints are independent, when DoF is zero there is an exact solution. If there are more constraints, the model is over-defined and degrees of freedom is negative. If there are more variables, then there are a range of possible solutions.
+
+We define the Jacobian matrix as in [@biegler2010nonlinear]
 
 $$
-G_{M_o} : S → M_i
+∇h(x)^T :=
+\begin{bmatrix}
+\frac{∂h_2(x)}{∂x_1} & \frac{∂h_2(x)}{∂x_2} & \cdots & \frac{∂h_2(x)}{∂x_n} \\
+\frac{∂h_1(x)}{∂x_1} & \frac{∂h_1(x)}{∂x_2} & \cdots & \frac{∂h_1(x)}{∂x_n} \\
+\vdots & \vdots & \vdots & \vdots \\
+\frac{∂h_m(x)}{∂x_1} & \frac{∂h_m(x)}{∂x_2} & \cdots & \frac{∂h_m(x)}{∂x_n} \\
+\end{bmatrix}
 $$
+
+where $h = C ∪ F$, the set of all the constraints, including the constraints fixing variables.
+
+Where the matrix is square, the Degrees of Freedom is zero. 
+
+### Replacement
+
+Variable replacement is a method of changing which variables in the model are fixed. We start with a fully defined model $\mathcal{M} = (x, C, F)$ such that:
+
 $$
-G_{T_o} : S → T_i + G_{T_d}(S)
+DoF(\mathcal{M}) = |x| - |F| - |C|  = 0
 $$
+
+Fixing a variable $V_i$ at index $i$ involves adding a constraint $c_i$ to $C$. We define $C' = C ∪ \{c_i\}$. However, if this is used in a model, $DoF((x,C',F)) = -1$ so the model would be overdefined and potentially have no solutions. 
+
+To solve this, we also choose an existing fixed variable to unfix, by removing it's constraint $c_j$ from $C$. This gives us a new set of constraints
+
 $$
-G_{T_d} : S → H * C_p * M_i
+C_{new} = (C \backslash \{c_j\}) ∪ \{c_i\}
 $$
+
+and a new model 
+
+$$
+\mathcal{M}_{new} = (x,C_{new},F)
+$$
+
+
+that maintains the condition that 
+$DoF(\mathcal{M}_{new}) = 0$.
 
 
 
