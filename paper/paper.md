@@ -17,17 +17,22 @@ These methods may be adopted by the modelling community to make it easier to bui
 
 \newpage
 
+# Glossary
+
+**AML**: AML
+
+**EOM**: Equation-Oriented Model
+
 # Introduction
 
 Designing and operating chemical factories requires accurate, comprehensive models of their behaviour. A powerful tool to represent chemical processes is equation-oriented algebraic modelling, as chemical processes often closely follow first-principles behaviour and include non-linear dynamics, two things that equation-oriented modelling excels at [@shacham1982equation]. 
 
-At its simplest, equation-oriented modelling involves specifying equations to represent the system, and solving those equations to find the unknown properties. However, modern processes are very complex, and Digital Twin technology means these models are built to be more integrated than ever before. This results in very complex equation-oriented models and very large sets of equations.
+At its simplest, equation-oriented modelling involves specifying equations to represent the system, and solving those equations to find the unknown properties. However, modern processes are very complex, and Digital Twin technology means these models are built to be more integrated than ever before. This results in very complex equation-oriented models (EOMs) and very large sets of equations.
 
-Because equation-oriented modelling is inherently implicit, in these large models it can be hard to interpret the interactions between variables, or understand what is required to fully define the model. Additionally, equation-oriented modelling still fundamentally relies on numerical methods to solve the system of equations. Initial values and scaling factors for variables can be the difference between a model succeeding or failing to converge on a solution. This becomes more of a problem as the mathematical model grows larger. 
+EOMs are usually specified in a declarative manner through Algebraic Modelling Languages (AMLs). To help models remain understandable, newer AMLs such as Pyomo apply software engineering principles of abstraction and encapsulation so that the entire system does not always have to be considered at once. 
+This often means the person using the model does not fully understand of the equations behind it, making it hard for them to fully define the system of equations in a useful format. 
 
-To help deal with the complexity of modern equation-oriented models, software engineering techniques can be applied. Equation-oriented models are usually specified in a declarative manner through algebraic modelling languages. Newer algebraic modelling languages such as Pyomo draw on software engineering principles of abstraction and ecapsulation to make this process easier. They also include tools to help with initialisation and scaling. However, as an equation-oriented model is considered simeultaneously, while a conventional software program is run iteratively, it is much harder to apply these techniques and new methods need to be developed to simplify how a model is built.
-
-This article introduces a new method to fully define an equation-oriented model. We propose that this method will simplify the process of squaring, initialising, and scaling a model. Our library, pyomo-replace, demonstrates some advantages of this approach in the Pyomo and IDAES [@miller2018next] ecosystem, and the Ahuora Platform provides a case study of this approach in a graphical application.
+This article introduces a novel method to fully define an EOM. We propose that the model developer should always fully define their model, choosing an initial set of variables to constrain. Then, those using the model can constrain other variables, but only if they choose an another variable to un-constrain. We propose that this method will simplify the process of squaring, initialising, and scaling a model. Our library, pyomo-replace, demonstrates some advantages of this approach in the Pyomo and IDAES [@miller2018next] ecosystem, and the Ahuora Platform provides a case study of this approach in a graphical application.
 
 ## Background
 
@@ -37,11 +42,11 @@ In the Chemical Process industry, modelling and simulation is frequently used to
 
 With the advent of more computing resources and networked sites, process modelling has become more critical than ever before.  One way this is shown is in the rise in popularity of Digital Twins, which try to make a complete and comprehensive model of many different properties of entire sites and their surroundings [@walmsley2024adaptive]. As these models have become larger, being able to understand all of the constraints within the system simultaneously becomes harder and harder, making it harder to run, interpret, or adjust the model. 
 
-The behaviour of Chemical processes is commonly modelled with equation-oriented models [@biegler1997systematic]. This is usually done in an Algebraic Modelling Language or equation-oriented modelling framework, sometimes with the assistance of graphical user interface (GUI). 
+The behaviour of Chemical processes is commonly modelled with EOMs [@biegler1997systematic]. This is usually done in an AML or equation-oriented modelling framework, sometimes with the assistance of graphical user interface (GUI). 
 
 ### Equation-oriented Modelling
 
-Fundamentally, an Equation-Oriented Model is simply a set of mathematical equations, optionally with an objective function [@biegler2010nonlinear].
+Fundamentally, an EOM is simply a set of mathematical equations, optionally with an objective function [@biegler2010nonlinear].
 
 The main parts of these equations are:
 
@@ -54,13 +59,13 @@ The main parts of these equations are:
 
 Constants, variables, constraints, and objectives are fundamentally all that is required in a mathematical model. However, over time additional abstractions have been developed for easier programmatic creation and manipulation of models, borrowing from conventional software development data structures. 
 
-Traditionally, equation-oriented models were built in special-purpose languages, such as GAMS and AMPL. More recently they have moved to general-purpose programming languages, which have extra tooling avaliable that allow you to build and initialise large equation-oriented models programmatically [@jusevivcius2021experimental]. 
+Traditionally, EOMs were built in special-purpose languages, such as GAMS and AMPL. More recently they have moved to general-purpose programming languages, which have extra tooling avaliable that allow you to build and initialise large EOMs programmatically [@jusevivcius2021experimental]. 
 Some of the main modern equation-oriented modelling tools include JuMP, built on Julia, and Pyomo, built on python. 
 
 We will focus on Pyomo in particular here, as it was built with chemical process modelling in mind and has good libraries to aid in chemical process modelling [@hart2011pyomo]. It is a framework for building mathematical models that is written in Python . It includes tools to manage abstraction and complexity in a mathematical model, and to define initialisation routines and scaling factors to enhance numerical stability. 
 The equation-oriented modelling framework Pyomo includes the following abstractions:
 
-- Constants and variables are represented as *Fixed Variables* and *Unfixed Variables* respectively. It is easy to change which variables are fixed and which are unfixed, so a model with the same structure can be used to solve for different variables. I.e either you can fix $x$ to calculate $y$, or you can fix $y$ to calculate $x$.
+- Constants and variables are represented as *Fixed Variables* and *Unfixed Variables* respectively. It is easy to change which variables are fixed and which are unfixed, so a model with the same structure can be used to solve for different variables. (i.e either you can fix $x$ to calculate $y$, or you can fix $y$ to calculate $x$.)
 - Variables and constraints can be indexed across a set. A variable or constraint is added for each item in the set. Sets are constant - you can't add or remove items during solving - but they provide a generalisation that makes it easy to scale up, down, or modify problems for slightly different cases.  
 - Variables can be grouped into *Blocks*. Blocks can also have sub-blocks inside them, making a tree data structure^[Variables and Blocks can be thought of like Files and Folders in a filesystem. Blocks only provide structure but no information, and can be nested inside each other, while variables contain the actual values in the model]. 
 
@@ -75,7 +80,7 @@ Pyomo's construction techniques make it possible to create libraries of pre-writ
 
 ### Squaring a model
 
-In order to solve a set of equations exactly, a "square" model is required. This term is taken from linear algebra where a matrix must be square to be invertible, i.e have an exact solution. What it really means is that there must be the same number of equations (constraints) as there are unknowns (unfixed variables). 
+In order to solve a set of equations exactly, a "square" model is required. This term is taken from linear algebra where a matrix must be square to be invertible, i.e have an exact solution. What it really means is that there must be the same number of equations (constraints) as there are unknowns (unfixed variables), for the problem to be well posed. 
 
 The difference between the two is described as the degrees of freedom. A model that has more unknowns than constraints is said to have $n$ degrees of freedom, where $n_{\text{degrees\ of\ freedom}}$ is given by
 
@@ -83,13 +88,13 @@ $$
 n_{\text{degrees\ of\ freedom}} =  n_{\text{variables}} - n_{\text{constraints}}
 $$
 
-Additionally, all the variables and equations must be linearly independent. When building an equation-oriented model, the user will invariably come across the problem of Degrees of Freedom; usually they will not have specified the model sufficiently to be able to solve for an exact solution, i.e $n_{\text{degrees\ of\ freedom}} > 0$. 
+Additionally, all the variables and equations must be linearly independent. When building an EOM, the user will invariably come across the problem of Degrees of Freedom; usually they will not have specified the model sufficiently to be able to solve for an exact solution, i.e $n_{\text{degrees\ of\ freedom}} > 0$. 
 
-IDAES has methods to calculate the number of degrees of freedom, and if there are any over-defined or under-defined sets that make the model linearly dependent [@lee2024model]. Still, figuring out how many and which variables need to be "fixed" to make the model square can be a challenge. It becomes easier if the documentation of a block has defined exactly how many degrees of freedom it has, and which variables it expects to have fixed. 
+IDAES has methods to calculate the number of degrees of freedom, and if there are any over-defined or under-defined sets that make the model linearly dependent [@lee2024model]. Still, identifying how many and which variables need to be "fixed" to make the model square can be a challenge [@luyben1996design]. It becomes easier if the documentation of a block has defined exactly how many degrees of freedom it has, and which variables it expects to have fixed. 
 
 ### Initialisation <!--& Scaling-->
 
-In practice, Algebraic modelling problems are solved by initialising the unknown variables to a "best guess", and then performing an iterative search that gradually converges on the solution. In practice, this process does not always work, particularly when you are modelling non-convex systems and you start in the wrong region of convexity, or outside of the region your model was designed for [@casella2008beyond]. Even if the algorithm is able to converge, it may take significantly longer than if you had started with a good initial guess. 
+In practice, Algebraic modelling problems are solved by initialising the unknown variables to a "best guess", and then performing an iterative search that gradually converges on the solution. In practice, this process does not always work, particularly when you are modelling non-convex systems and you start in the wrong region of convexity, or outside of the region your model was designed for [@casella2008beyond].
 
 To help with this process, IDAES includes methods to initialise a model before solving. This involves solving part of a model, or using a simpler model to estimate what the true solution might be. However, these methods are often built around the assumption that you have fixed certain variables - if you are instead solving for those variables, the initialisation method is unlikely to work as well. 
 
@@ -114,13 +119,13 @@ Taking a step back to look at the larger picture, Luyben et. al [@luyben1996desi
 
 ## Intuition
 
-In mathematical modelling, you can choose what variables in a model you want to specify, and which ones are calculated. In the physical world, you don't get to choose at all: there are some things that you can adjust, and some that simply follow as a natural consequence. The closest thing to "fixing" a property, or holding a property constant, is control theory. Let us consider a very simple model of a car's velocity:
+In mathematical modelling, you can choose what variables in a model you want to specify, and which ones are calculated. In the physical world, there are some things that can be adjusted, and some that simply follow as a natural consequence. The closest thing to "fixing" a property, or holding a property constant, is control theory. Let us consider a very simple model of a car's velocity:
 
 $$
 v = kx
 $$
 
-That is, the velocity $v$ of a car on flat ground is equal to some performance constant $k$ multiplied by the amount the accelerator pedal is depressed, $x$. If the accelerator is depressed further, the velocity of the car will increase. This can easily be modelled in an Algebraic Modelling language, with either the velocity of the acceleration fixed to fully define the system. In the physical world, the velocity of the car cannot be set; the only thing that can really be set is the position of the accelerator pedal. However, control theory allows you to instead hold $v$ constant, calculating the appropriate value of $x$ for that to be the case. 
+That is, the velocity $v$ of a car on flat ground is equal to some performance constant $k$ multiplied by the amount the accelerator pedal is depressed, $x$. If the accelerator is depressed further, the velocity of the car will increase. This can easily be modelled in an AML, with either the velocity of the acceleration fixed to fully define the system. In the physical world, the velocity of the car cannot be set; the only thing that can really be set is the position of the accelerator pedal. However, control theory allows you to instead hold $v$ constant, calculating the appropriate value of $x$ for that to be the case. 
 
 The intuition behind variable replacement is similar. There are some variables that it is easy to think of as fully defining the system; we will call them "state variables". They are all linearly independent. All other variables can be defined in terms of these state variables^[This is analogus to the concept of a *critical set* in combinatorial design theory.]. In this example, the position of the accelerator pedal makes the most intuitive sense as the state variable, that is what you set to control the car's speed.
 
@@ -130,11 +135,11 @@ Starting with all the state variables fixed means you never have a under-defined
 
 ## Formal Definition of Variable Replacement Methodology
 
-This section outlines how Variable Replacement is defined on an equation-oriented model, borrowing terminology and concepts from the Pyomo equation-oriented modelling ecosystem.
+This section outlines how Variable Replacement is defined on an EOM, borrowing terminology and concepts from the Pyomo equation-oriented modelling ecosystem.
 
 ### Mathematical Definition
 
-An equation-oriented model be viewed mathematically as 
+An EOM be viewed mathematically as 
 
 $$
 \mathcal{M} = (x, C, F)
@@ -285,11 +290,11 @@ Note that replacing fixed variables does not guarantee that the problem is still
 
 ## A reference implementation: pyomo-replace
 
-To aid in evaluating the advantages of a variable replacement approach to equation-oriented modelling, we have created a small python package built on IDAES and pyomo, called pyomo-repace. It demonstrates the principles of variable replacement in a format as similar as possible to standard IDAES modelling, to make it easier to draw comparisons between the two approaches. 
+To aid in evaluating the advantages of a variable replacement approach to equation-oriented modelling, we have created a small python package built on IDAES and pyomo, called pyomo-replace. It demonstrates the principles of variable replacement in a format as similar as possible to standard IDAES modelling, to make it easier to draw comparisons between the two approaches. 
 
 Pyomo-replace contains methods to keep track of the state variables in an IDAES model, and what variables are replacing them. The list of state variables and replacements can be easily printed to the screen to help explain the model structure. 
 
-In Pyomo, an equation-oriented model is specified as a set of Blocks, with each block containing variables and constraints between variables. A Block may contain Ports, which provide a method of connecting Blocks together.
+In Pyomo, an EOM is specified as a set of Blocks, with each block containing variables and constraints between variables. A Block may contain Ports, which provide a method of connecting Blocks together.
 
 A Port is simply a collection of variables on a block. A port is specified to be either an Inlet Port or an Outlet Port. An Inlet port may be connected to an Outlet port containing an equivalent collection of variables. The inlet and outlet port do not need to be on the same block. Connecting two ports creates an equality constraint between the variable on the Outlet and the variable on the Inlet, that is, the variable on the inlet is defined to be equal to the corresponding variable on the outlet port. 
 
@@ -319,7 +324,9 @@ Metadata about which variables are replacing which state variables is stored. If
 
 As long as these conditions are met, the model will stay at zero degrees of freedom and remain structurally valid. These rules are the essence of the variable replacement methodology.
 
-### Advanced Cases
+### Special cases for integration with the IDAES Framework
+
+In pyomo-replace, to integrate with the pyomo framework we have had to support indexed variables, networks of blocks, tear guesses, and optimisation. This section discusses how these higher-level abstractions impact the application of variable replacement in the domain of chemical simulation problems.
 
 #### Indexed Variables
 
@@ -327,21 +334,21 @@ We have previously discussed how pyomo allows indexing variables by a constant s
 
 One Indexed Variable may be replaced by another Indexed Variable so long as the size of the indexed variables (the number of items in it's index set) are the same, and the model is still structurally sound afterwards; i.e there are no over or underconstrained variable sets. This is a convientent abstraction as it avoids having to replace each individual variable in a set. For example, in a tank, you could specify level over time instead of flow rate out of the tank over time. As long as they are both indexed by time, there will be no problems as the number of constraints removed is equal to the number of constraints added.
 
-#### Tear Guesses in Network Loops
-
-When an outlet is connected to an inlet that is upstream of the current Block, a cycle in the network graph is detected. Pyomo.network automatically handles detecting network loops, and requires that tear guesses must be specified to help the model initialise and solve. No special handling needs to take place for variable replacement to work with this. 
-
 #### Calculating Inlet Properties
 
 Inlets that are not connected to anything upstream are considered to be state variables. They can be replaced by other variables. This is generally fine, but some models are built with the expectation that inlet conditions are calculated. For example, the pressure exchanger model at [@watertap_pressure_exchanger] expects that the inlet flow on both sides is the same, meaning the flow of only one side needs to be fixed: the other side will be calculated to match. This type of model simply cannot work under the constraints we have applied on the system. 
 
-However, there is a simple workaround to make these models possible. In this example, the flow balance constraint can be replaced with a variable that calculates the residual between the flows. This residual can be fixed to zero if one of the inlet flows is unfixed as a state variable. It is up the the model developer to decide which constraint should instead be expressed as a residual, and to explain to the users of the model that the residual should be fixed. However, specifying the model this way has some advantages, as it will explicitly show the reasons the inlet conditions do not need to be fixed. 
+However, there is a simple workaround to make these models possible. In this example, the flow balance constraint can be replaced with a variable that calculates the residual between the flows. This residual can be fixed to zero if one of the inlet flows is unfixed as a state variable. It is up to the model developer to decide which constraint should instead be expressed as a residual, and to explain to the users of the model that the residual should be fixed. However, specifying the model this way has some advantages, as it will explicitly show the reasons the inlet conditions do not need to be fixed. 
+
+#### Tear Guesses in Network Loops
+
+When an outlet is connected to an inlet that is upstream of the current Block, a cycle in the network graph is detected. Pyomo.network automatically handles detecting network loops, and requires that tear guesses must be specified to help the model initialise and solve. No special handling needs to take place for variable replacement to work with this. 
 
 ### Application to Optimisation Problems
 
 Optimisation problems do not have zero degrees of freedom, and so this technique is not exactly applicable. However, generally a flowsheet is solved exactly, without performing optimisation, to provide a starting point for the optimisation algorithm. Then variables are unfixed and the optimisation problem is solved. This approach would work fine using the variable replacement methodology: variable replacement could be used to fully define the model for an initial solve. Then a set of additional variables can be unfixed and the optimisation algorithm can be run. 
 
-Additionally, knowing the list of state variables may still provide good context for optimisation, as any state variables you unfix are the ones that you are calculating an optimum value for.
+Additionally, knowing the list of state variables may still provide good context for optimisation, as any state variables you unfix are the ones for which you are calculating an optimum value.
 
 
 ### An example in IDAES.
@@ -358,8 +365,8 @@ First we must define the basic structure:
 ```
 These lines:
 
-- Create a new equation-oriented model in the Pyomo Framework
-- Add a IDAES Flowsheet into the equation-oriented model (This always required when building models with IDAES)
+- Create a new EOM in the Pyomo Framework
+- Add a IDAES Flowsheet into the EOM (This always required when building models with IDAES)
 - Specify the fluid property package to model water, using the IAPWS95 specification [@wagner2002iapws]
 - Add a Compressor unit operation to the flowsheet, using the IAPWS95 property package to model the properties of the water.
 
@@ -434,13 +441,13 @@ Variable replacement enforces a degree of regularity in the blocks that make up 
 
 To have a square model, you must have the same number of unknowns, or unfixed variables, as equations, i.e $n_{\text{degrees\ of\ freedom}} = 0$.
 
-Traditional model libraries such as IDAES provide the equations, and then all that is required is to specify enough variables that the number of variables equals the number of unknowns. This can be done by repeatedly fixing variables in a part of a model that is not already over-defined^[i.e You must fix variables that are part of a Dulmage-Mendelson underconstrained set.], until the model is fully defined. Incorrect degrees of freedom has been identified as a common source of errors in equation-oriented models, and checking the degrees of freedom is the first recommended step to diagnose problems [@lee2024model]. Newer analysis methods, such as Dulmage-Mendelson Decomposition do make this simpler, but it is still an iterative process.
+Traditional model libraries such as IDAES provide the equations, and then all that is required is to specify enough variables that the number of variables equals the number of unknowns. This can be done by repeatedly fixing variables in a part of a model that is not already over-defined^[i.e You must fix variables that are part of a Dulmage-Mendelson underconstrained set.], until the model is fully defined. Incorrect degrees of freedom has been identified as a common source of errors in EOMs, and checking the degrees of freedom is the first recommended step to diagnose problems [@lee2024model]. Newer analysis methods, such as Dulmage-Mendelson Decomposition do make this simpler, but it is still an iterative process.
 
-Using a Variable Replacement approach, a set of state variables would be already defined by the model library, so the user would not need to square the model. There are zero degrees of freedom *by definition*. If a problem requires a variable to be fixed that is not a state variable, an appropriate^[i.e A state variable that would be part of the Dulmage-Mendelson overconstrained set if the other variable was fixed and nothing was unfixed] state variable must be unfixed too. As we add a degree of fredom every time we remove a degree of freedom, they 'cancel out' guaranteeing that we will continue to have a square model. This eliminates an entire class of errors with practical application of equation-oriented models.
+Using a Variable Replacement approach, a set of state variables would be already defined by the model library, so the user would not need to square the model. There are zero degrees of freedom *by definition*. If a problem requires a variable to be fixed that is not a state variable, an appropriate^[i.e A state variable that would be part of the Dulmage-Mendelson overconstrained set if the other variable was fixed and nothing was unfixed] state variable must be unfixed too. As we add a degree of fredom every time we remove a degree of freedom, they 'cancel out' guaranteeing that we will continue to have a square model. This eliminates an entire class of errors with practical application of EOMs.
 
 ## Simplified Initialisation <!--and Scaling -->
 
-Initial guesses greatly increase the robustness of solving equation-oriented models. Modelling toolboxes such as IDAES provide methods to automatically define initial guesses based on fixed variables. However, if different variables are fixed to the ones the modelling library expects, these methods will not provide any benefit, and may even cause additional problems.
+Initial guesses greatly increase the robustness of solving EOMs. Modelling toolboxes such as IDAES provide methods to automatically define initial guesses based on fixed variables. However, if different variables are fixed to the ones the modelling library expects, these methods will not provide any benefit, and may even cause additional problems.
 
 ![Alternative initialisation routine, making use of state variables to avoid the need for different initialisation methods.](assets/initialisation-methods.drawio.png)
 
@@ -500,7 +507,7 @@ This provides a natural form of documentation for the model: The outlet pressure
 
 ### Example 2: Modifying a flowsheet
 
-Equation-oriented models are generally considered as a finished product, and their evolution and development is ignored. However, in practice equation-oriented models are built like pieces of software; iteratively and incrementally over time^[A good explanation of iterative vs incremental development is discussed by Jeff Patton at [https://jpattonassociates.com/dont_know_what_i_want/](https://jpattonassociates.com/dont_know_what_i_want/)]. A model is generally built by applying a series of modifications to a simple model, including:
+EOMs are generally considered as a finished product, and their evolution and development is ignored. However, in practice EOMs are built like pieces of software; iteratively and incrementally over time^[A good explanation of iterative vs incremental development is discussed by Jeff Patton at [https://jpattonassociates.com/dont_know_what_i_want/](https://jpattonassociates.com/dont_know_what_i_want/)]. A model is generally built by applying a series of modifications to a simple model, including:
 
 - Changing which variables are fixed (In variable replacement, this would be replacing variables, in a Degrees of freedom approach, this would be fixing and unfixing variables)
 - Adding a new variable with a corresponding constraint to define it (e.g defining a custom calculated property)
@@ -589,11 +596,11 @@ The GUI also does not provide any way to write custom initialisation routines, b
 
 # Conclusion
 
-Variable replacement provides an alternative way of maintaining a square model in an equation-oriented framework, particularly when scaling up to larger equation-oriented models. 
+Variable replacement provides an alternative way of maintaining a square model in an equation-oriented framework, particularly when scaling up to larger EOMs. 
 
 If state variables are defined on each block added to a model, those who use the model do not need to first square the problem. Degrees of freedom are kept at zero through any changes that are made to the flowsheet. The coupling between state variables and fixed variables provides a more interpretable way of reasoning about the model, bringing the relationships between variables to the forefront. Additionally, a set of state variables and initial guesses for them makes it simpler to build initialisation and scaling methods. The Ahuora Digital Twin Platform provides a case study on how this is beneficial, particularly when using a GUI tool for modelling. 
 
-While this paper introduces Variable Replacement as a method and purview it's potential benefits, further research is required to systematically evaluate the interpretability and initialisation advantages across different types of equation-oriented models. Nonetheless, these techniques hold promise to standardise the creation and use of libraries of equation-oriented models. This would enable Equation-Oriented modelling to be used in a more maintainable way on large projects, such as Process Digital Twins, in the future. 
+While this paper introduces Variable Replacement as a method and purview it's potential benefits, further research is required to systematically evaluate the interpretability and initialisation advantages across different types of EOMs. Nonetheless, these techniques hold promise to standardise the creation and use of libraries of EOMs. This would enable equation-oriented modelling to be used in a more maintainable way on large projects, such as Process Digital Twins, in the future. 
 
 # Appendix
 
