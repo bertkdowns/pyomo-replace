@@ -16,6 +16,13 @@ Requirements:
     - current guess variables (state vars that are replaced) (recursively)
 """
 
+def is_child_of(block, component):
+    parent = component.parent_block()
+    while parent is not None:
+        if parent is block:
+            return True
+        parent = parent.parent_block()
+    return False
 
 def register_block(block, state_vars: list, allow_degrees_of_freedom=False):
     """
@@ -30,7 +37,7 @@ def register_block(block, state_vars: list, allow_degrees_of_freedom=False):
         ValueError: If any of the state variables are not part of the block, or if the block does not have zero degrees of freedom after fixing the state variables.
     """
     for v in state_vars:
-        if v.parent_block() is not block:
+        if is_child_of(v,block):
             raise ValueError(
                 f"Variable {v} is not part of the block {block.name} being registered"
             )
@@ -169,7 +176,7 @@ def is_in(obj, container):
 def replace_state_var(state_var, new_var):
     state_var_parent = state_var.parent_block()
     new_var_parent = new_var.parent_block()
-    parent_block = closest_common_parent(state_var, new_var)
+    parent_block = state_var_parent.flowsheet()
     if parent_block is None:
         raise ValueError(
             f"Variables {state_var} and {new_var} do not share a common parent block."
@@ -228,6 +235,8 @@ def replace_state_var(state_var, new_var):
         new_var.unfix()
         raise ValueError(
             f"Replacing variable {state_var} with {new_var} causes a structural singularity in {parent_block.name}. These variables cannot be replaced with the given system configuration."
+            "Unmatched constraints: "
+            f"{list(i.name for i in constraint_dm_partion.unmatched)}"
         )
 
     # Record the replacement (old_var, new_var) so that it can be tracked.

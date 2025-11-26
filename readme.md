@@ -29,7 +29,7 @@ In this example, heat duty is replaced with outlet enthalpy, and the inlet press
 This means heat duty is unfixed, and so is inlet pressure. These will be calculated from the outlet enthalpy and pressure instead.
 
 ```
-$ python example_idaes.py
+$ uv run example_idaes.py
 
 Replacements in block fs:
   fs.h1.heat_duty -> fs.h1._enth_mol_outlet_ref
