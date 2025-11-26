@@ -80,7 +80,7 @@ Pyomo's construction techniques make it possible to create libraries of pre-writ
 
 ### Squaring a model
 
-In order to solve a set of equations exactly, a "square" model is required. This term is taken from linear algebra where a matrix must be square to be invertible, i.e have an exact solution. What it really means is that there must be the same number of equations (constraints) as there are unknowns (unfixed variables), for the problem to be well posed. 
+In order to solve a set of equations exactly, a "square" model is required. This term is taken from linear algebra where a matrix must be square to be invertible. In this context, it means that there must be the same number of equations (constraints) as there are unknowns (unfixed variables), for the problem to be well posed and have an exact solution. 
 
 The difference between the two is described as the degrees of freedom. A model that has more unknowns than constraints is said to have $n$ degrees of freedom, where $n_{\text{degrees\ of\ freedom}}$ is given by
 
@@ -104,13 +104,14 @@ To help with this process, IDAES includes methods to initialise a model before s
 
 The field of static structural analysis has helped to solve some of the problems of squaring a model. In [@bunus2001debugging], a method is proposed to help debug when a model is singular, by using Dulmage-Mendelson Decomposition to identify sets of constraints that are over-constrained or under-constrained. These methods are commonly used in frameworks such as IDAES to help ensure a square model is valid [@lee2024model]. However, while these techniques are applicable to an entire "flat" system of equations, it is hard to apply them to an individual block without understanding of what external constraints are applied. Some preliminary work has been conducted to show that in some cases issues can be identified in this level [@nilsson2008type], but it is limited in its ability to detect errors and does not appear to have much uptake in systems such as Pyomo.
 
-As initialisation is a common problem across equation-oriented modelling tools, a number of approaches have been considered to help overcome the numeric issues that arise during solving. Simple strategies include initialising at random points, initialising at zero, initialising at a previously solved location, or solving a simpler model first [@lawrynczuk2022initialisation]. IDAES models generally take the latter approach, initialising parts of the model at a time, removing some of the more complex constraints or solving a relaxed problem first. Pyomo Network includes methods to run sequential decomposition, which initialises every block in order once any blocks it depends on have been initialised [@pyomo_network_doc].
+As initialisation is a common problem across equation-oriented modelling tools, a number of approaches have been considered to help overcome the numeric issues that arise during solving. Simple strategies include initialising at random points, initialising at zero, initialising at a previously solved location, or solving a simpler model first [@lawrynczuk2022initialisation; @hensen2005embedding]. IDAES models generally take the latter approach, initialising parts of the model at a time, removing some of the more complex constraints or solving a relaxed problem first. Pyomo Network includes methods to run sequential decomposition, which initialises every block in order once any blocks it depends on have been initialised [@pyomo_network_doc].
 
 
 
 <!-- I'm removing scaling as a topic for now. However if we bring it back, Doug's paper "Jacobian-based Model Diagnostics and Application to Equation-oriented Modeling of a Carbon Capture System" needs to be cited here
 Scaling is mostly a concern when variables have wildly different orders of magnitude. For example, when power is measured in order of $10^9$ $J$ but valve cross sectional areas are measured in the order of $10^{-2}$ $m^2$, the difference can quickly approach the precision of a floating-point number [@casella2017importance]. To remedy this, variables need to be scaled to similar orders of magnitude. Pyomo provides preprocessing tools for this. Often many variables require similar scaling factors based on the model definition, and so libraries such as IDAES provide tools to automatically propogate scaling factors across variables, after a few initial scaling factors are added [@idaes_scaling_doc]. However, the scaling factors the modeller needs to provide depend on the implementation of the model, and may be different to the variables that are fixed or the guesses that are required for initialisation.
 -->
+Many papers on equation oriented modelling focus on numerical methods to reformulate or extend equation oriented models to forms that are easier to computationally solve, such as [Carpanzano01062000;CHOU2002271;ersal2007realization]. The major development of recent years in AMLs has been to move them to general purpose programming languages [@lubin2023jump;@hart2011pyomo] enable better encapsulation and integration, but the core ideology is the same. The major interface changes have been specific to certain problem classes, such as robust optimisation [@sherman2024recent], or design of experiments [@wang2022pyomo]. There is a need to re-evaluate the fundamental methods of defining and manipulating an equation-oriented model.
 
 Taking a step back to look at the larger picture, Luyben et. al [@luyben1996design] observed and discussed the correlation between degrees of freedom in design-time models and in control models, especially for reactors and distillation columns. This is because the things you specify in design time, such as inlet flow rates or outlet temperatures, need to be controlled in the real factory, usually by valves. They argue that calculating the number of controlled parameters in a plant is an easier way to understand the degrees of freedom of a process than by trying to analyse the number of equations and variables in a model that can be adjusted independently. This is an interesting link between design and control specification that we will explore further in this paper.
 
@@ -175,7 +176,7 @@ $$
 Or the number of variables minus the number of fixed variables minus the number of constraints.
 
 If all constraints are independent, when DoF is zero there is an exact solution. If there are more constraints, the model is over-defined and degrees of freedom is negative. If there are more variables, then there are a range of possible solutions.
-
+<!--
 We define the Jacobian matrix as in [@biegler2010nonlinear]
 
 $$
@@ -190,7 +191,7 @@ $$
 
 where $h = C ∪ F$, the set of all the constraints, including the constraints fixing variables.
 
-Where the Jacobian is square, the Degrees of Freedom is zero.
+Where the Jacobian is square, the Degrees of Freedom is zero.-->
 
 ### Replacement
 
