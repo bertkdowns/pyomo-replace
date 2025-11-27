@@ -421,7 +421,11 @@ Both of these options require manual intervention from the modeller, as there is
 
 Whether the method of replacement improves interpretability and maintainability is a subjective question. Nonetheless, these examples demonstrate the basic properties of Variable Replacement, and the advantages that it can provide in understanding the relationships between fixed variables in the system, without needing to dig into the underlying mathematical formulations. This also makes it simpler to modify a model and maintain a solvable state. However, similar to typed languages in software development, the realisable benefit may depend on the use case. 
 
-# Case Study: Geothermal Power Plant
+# Case Studies
+
+To help demonstrate the potential of a Variable Replacement approach to designing systems built on EOMs, this section includes three examples. The first discusses a geothermal plant, showing how Variable Replacement makes it easier to keep track of the sources of variability in the system. The second discusses a Dynamic Tank, showing how Variable Replacement can work with a time-based problem. The third discusses how variable replacement makes it easier to create User Interfaces (UIs) for building equation oriented models from sets of pre-configured equations. 
+
+## Geothermal Power Plant
 
 ![Flow Diagram of a fully specified Geothermal Power Plant, demonstrating which state variables are being replaced.](assets/geothermal-replacement.drawio.png)
 
@@ -433,7 +437,7 @@ Those familiar with control systems may note that the variable replacement appro
 
 Of particular note is the flow in the brine inlet. The factory does not record the brine flow in, however it does record the total flow out. Thus, we can replace the Brine inlet flow with the Total flow, and the Brine flow will be back-calculated. Note that the brine outlet flow is specified much later downstream from the brine inlet. When this happens in conventional Degree of Freedom replacement systems, it can be very hard to understand why the brine outlet flow needs to be specified. By using a Variable Replacement approach, it is immediately obvious. Specifying stream properties downstream of an operation, sometimes significantly downstream, is a common practice when modelling, and Variable replacement makes it easier to understand why these properties need to be specified.
 
-# Case Study: Dynamic Tank
+## Dynamic Tank
 
 ![A model of a tank with valves controlling the inlet and the outlet. Properties with an asterisk (*) next to them are not time-indexed. The tank outlet pressure is referenced by the PID controller, but is not a state variable.](assets/dynamics.drawio.png)
 
@@ -449,7 +453,7 @@ Initial Material Accumulation and Initial Energy Accumulation can be treated as 
 
 This case study successfully demonstrates that the variable replacement logic can easily be extended to more complex flowsheet scenarios involving dynamics or other indexed variables.
 
-# Case Study: Ahuora Digital Twin Platform
+## Ahuora Digital Twin Platform
 
 ![A Heat pump in the Ahuora Platform.](assets/ahuora-interface.png)
 
