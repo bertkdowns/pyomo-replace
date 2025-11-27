@@ -2,7 +2,7 @@
 title: "Variable Replacement: A Novel Technique for Managing Complexity in Large Equation-Oriented Chemical Process Models"
 bibliography: refs.bib
 ---
-<!--- a control perspective on managing comple... -->
+<!--- a control perspective on managing complexity... -->
 \newpage
 
 # Abstract
@@ -19,7 +19,7 @@ These methods may be adopted by the modelling community to make it easier to bui
 
 # Glossary
 
-**AML**: AML
+**AML**: Algebraic Modelling Language
 
 **EOM**: Equation-Oriented Model
 
@@ -59,7 +59,7 @@ The main parts of these equations are:
 
 Constants, variables, constraints, and objectives are fundamentally all that is required in a mathematical model. However, over time additional abstractions have been developed for easier programmatic creation and manipulation of models, borrowing from conventional software development data structures. 
 
-Traditionally, EOMs were built in special-purpose languages, such as GAMS and AMPL. More recently they have moved to general-purpose programming languages, which have extra tooling avaliable that allow you to build and initialise large EOMs programmatically [@jusevivcius2021experimental]. 
+Traditionally, EOMs were built in special-purpose languages, such as GAMS and AMPL. More recently they have moved to general-purpose programming languages, which have extra tooling available that allow you to build and initialise large EOMs programmatically [@jusevivcius2021experimental]. 
 Some of the main modern equation-oriented modelling tools include JuMP, built on Julia, and Pyomo, built on python. 
 
 We will focus on Pyomo in particular here, as it was built with chemical process modelling in mind and has good libraries to aid in chemical process modelling [@hart2011pyomo]. It is a framework for building mathematical models that is written in Python . It includes tools to manage abstraction and complexity in a mathematical model, and to define initialisation routines and scaling factors to enhance numerical stability. 
@@ -74,7 +74,7 @@ Blocks are of particular interest here. Similar to how a class in object-oriente
 Pyomo also includes some even higher level modelling extensions, which are of particular relevance to Chemical Process Modelling:
 
 - *Pyomo.DAE* allows defining Differential Algebraic Equations across "infinite" sets that are discretised, automatically creating the necessary constraints to define derivatives and integrals [@nicholson2018pyomo]. This is naturally useful in chemical and process modelling to create 1D simulations across time, taking in to account holdup, tank level, and so forth. 
-- *Pyomo.network* allows you to represent your model as a graph: Blocks become nodes in the graph, and they can be connected to other nodes via edges called "arcs" that define equality constraints between variables [@bynum2021pyomo]. In many domains the graph view better represents the model structure. It also allows propogating initial values throughout a model. This is of particular importance as it allows sharing of information between distinct blocks. In a Chemical Process, it is natural to use this interface to encode the connections between different unit operations, so that the output material of one unit operation is the input material to a successive unit operation.
+- *Pyomo.network* allows you to represent your model as a graph: Blocks become nodes in the graph, and they can be connected to other nodes via edges called "arcs" that define equality constraints between variables [@bynum2021pyomo]. In many domains the graph view better represents the model structure. It also allows propagating initial values throughout a model. This is of particular importance as it allows sharing of information between distinct blocks. In a Chemical Process, it is natural to use this interface to encode the connections between different unit operations, so that the output material of one unit operation is the input material to a successive unit operation.
 
 Pyomo's construction techniques make it possible to create libraries of pre-written blocks, containing all the constraints and variables to model a piece of a physical system [@dowling2015framework]. One such library is IDAES-PSE. Built on top of Pyomo, it creates blocks to represent chemical unit operations such as compressors, heaters, tanks, and many more [@miller2018next]. It uses pyomo.DAE to represent time as a continuous differentiable property, and Pyomo.network to represent the connections between unit operations. Because the constraints are abstracted, the user doesn't have to think too much about the mathematical modelling - instead it is a chemical simulation platform.
 
@@ -109,7 +109,7 @@ As initialisation is a common problem across equation-oriented modelling tools, 
 
 
 <!-- I'm removing scaling as a topic for now. However if we bring it back, Doug's paper "Jacobian-based Model Diagnostics and Application to Equation-oriented Modeling of a Carbon Capture System" needs to be cited here
-Scaling is mostly a concern when variables have wildly different orders of magnitude. For example, when power is measured in order of $10^9$ $J$ but valve cross sectional areas are measured in the order of $10^{-2}$ $m^2$, the difference can quickly approach the precision of a floating-point number [@casella2017importance]. To remedy this, variables need to be scaled to similar orders of magnitude. Pyomo provides preprocessing tools for this. Often many variables require similar scaling factors based on the model definition, and so libraries such as IDAES provide tools to automatically propogate scaling factors across variables, after a few initial scaling factors are added [@idaes_scaling_doc]. However, the scaling factors the modeller needs to provide depend on the implementation of the model, and may be different to the variables that are fixed or the guesses that are required for initialisation.
+Scaling is mostly a concern when variables have wildly different orders of magnitude. For example, when power is measured in order of $10^9$ $J$ but valve cross sectional areas are measured in the order of $10^{-2}$ $m^2$, the difference can quickly approach the precision of a floating-point number [@casella2017importance]. To remedy this, variables need to be scaled to similar orders of magnitude. Pyomo provides preprocessing tools for this. Often many variables require similar scaling factors based on the model definition, and so libraries such as IDAES provide tools to automatically propagate scaling factors across variables, after a few initial scaling factors are added [@idaes_scaling_doc]. However, the scaling factors the modeller needs to provide depend on the implementation of the model, and may be different to the variables that are fixed or the guesses that are required for initialisation.
 -->
 Many papers on equation oriented modelling focus on numerical methods to reformulate or extend equation oriented models to forms that are easier to computationally solve, such as [Carpanzano01062000;CHOU2002271;ersal2007realization]. The major development of recent years in AMLs has been to move them to general purpose programming languages [@lubin2023jump;@hart2011pyomo] enable better encapsulation and integration, but the core ideology is the same. The major interface changes have been specific to certain problem classes, such as robust optimisation [@sherman2024recent], or design of experiments [@wang2022pyomo]. There is a need to re-evaluate the fundamental methods of defining and manipulating an equation-oriented model.
 
@@ -128,7 +128,7 @@ $$
 
 That is, the velocity $v$ of a car on flat ground is equal to some performance constant $k$ multiplied by the amount the accelerator pedal is depressed, $x$. If the accelerator is depressed further, the velocity of the car will increase. This can easily be modelled in an AML, with either the velocity of the acceleration fixed to fully define the system. In the physical world, the velocity of the car cannot be set; the only thing that can really be set is the position of the accelerator pedal. However, control theory allows you to instead hold $v$ constant, calculating the appropriate value of $x$ for that to be the case. 
 
-The intuition behind variable replacement is similar. There are some variables that it is easy to think of as fully defining the system; we will call them "state variables". They are all linearly independent. All other variables can be defined in terms of these state variables^[This is analogus to the concept of a *critical set* in combinatorial design theory.]. In this example, the position of the accelerator pedal makes the most intuitive sense as the state variable, that is what you set to control the car's speed.
+The intuition behind variable replacement is similar. There are some variables that it is easy to think of as fully defining the system; we will call them "state variables". They are all linearly independent. All other variables can be defined in terms of these state variables^[This is analogous to the concept of a *critical set* in combinatorial design theory.]. In this example, the position of the accelerator pedal makes the most intuitive sense as the state variable, that is what you set to control the car's speed.
 
 It follows by definition that if all state variables are fixed in a model, then the model will be fully defined, and have zero degrees of freedom. Fixing any other variable would cause the system to be over-defined. Thus, similar to in control theory, if you wanted to hold the velocity constant, you need to be able to adjust the amount the accelerator pedal is depressed. This is the fundamental principle behind variable replacement: start with all your state variables defined, and then if you want to set something else, you must choose a state variable to "replace", or unfix.
 
@@ -160,10 +160,10 @@ $F = \{f_i(x) = x_i - \bar{x_i}  = 0 : i ∈ S \}, S ⊆ \{1,...,n\}$  is a set 
 The set of feasible solutions can be given as:
 
 $$
-\mathcal(S) = \{ x ∈ R^n : C(x) = 0, F(x) = 0 \}
+\mathcal{S} = \{ x ∈ R^n : C(x) = 0, F(x) = 0 \}
 $$
 
-The feasible solutions to $x$ are in the zero set of both $C(x)$ and $F(x)$, that is, they satisfy all constraints in the system with.
+The feasible solutions to $x$ are in the zero set of both $C(x)$ and $F(x)$.
 
 ### Degrees of freedom
 
@@ -201,7 +201,7 @@ $$
 DoF(\mathcal{M}) = |x| - |F| - |C|  = 0
 $$
 
-Fixing a variable $V_i$ at index $i$ involves adding a constraint $f_i$ to $F$. We define $F' = F ∪ \{f_i\}$. However, if this is used in a model, $DoF((x,C,F')) = -1$ so the model would be overdefined and potentially have no solutions. 
+Fixing a variable $V_i$ at index $i$ involves adding a constraint $f_i$ to $F$. We define $F' = F ∪ \{f_i\}$. However, if this is used in a model, $DoF((x,C,F')) = -1$ so the model would be over-defined and potentially have no solutions. 
 
 To solve this, we also choose an existing fixed variable to unfix, by removing it's constraint $f_j$ from $F$. This gives us a new set of constraints
 
@@ -230,7 +230,7 @@ $$
 T_i + T_d = T_o 
 $$
 $$
-T_d = \frac{H . C_p}{M_i} 
+T_d = \frac{H \cdot C_p}{M_i} 
 $$
 
 Where $M_i$ and $M_o$ are the mass in and out respectively; $T_i$, $T_o$, and $T_d$ are the Temperature in, Temperature out, and Temperature difference; $H$ is the amount of heat energy added to the system, and $C_p$ is the heat capacity of the fluid.
@@ -257,7 +257,7 @@ C :=
 \begin{Bmatrix}
 x → M_i - M_o \\
 x → T_i + T_d - T_o  \\
-x → T_d - \frac{H . C_p}{M_i} 
+x → T_d - \frac{H \cdot C_p}{M_i} 
 \end{Bmatrix}
 $$
 
@@ -319,7 +319,7 @@ Once a model is built, different variables can be fixed instead of the state var
 
 - A variable must be chosen (that is not already fixed) and fixed. As the model was previously fully defined, this will make the model over-defined, with -1 degrees of freedom.
 - To prevent the model becoming over-defined, a state variable must be chosen and unfixed. We say this state variable has been "replaced" with the new variable.
-- The state variable must be chosen such that all equations in the model are still linearly independent. This can be done by choosing a state variable that is part of the Dulmage-Mendelson Overconstrained set when the new variable was fixed and the model was at -1 degrees of freedom. 
+- The state variable must be chosen such that all equations in the model are still linearly independent. This can be done by choosing a state variable that is part of the Dulmage-Mendelson Over-constrained set when the new variable was fixed and the model was at -1 degrees of freedom. 
 
 Metadata about which variables are replacing which state variables is stored. If a variable is ever unfixed, the state variable it replaced must be fixed again. 
 
@@ -331,9 +331,9 @@ In pyomo-replace, to integrate with the pyomo framework we have had to support i
 
 #### Indexed Variables
 
-We have previously discussed how pyomo allows indexing variables by a constant set of indexes. This provides a convienient grouping of variables.
+We have previously discussed how pyomo allows indexing variables by a constant set of indexes. This provides a convenient grouping of variables.
 
-One Indexed Variable may be replaced by another Indexed Variable so long as the size of the indexed variables (the number of items in it's index set) are the same, and the model is still structurally sound afterwards; i.e there are no over or underconstrained variable sets. This is a convientent abstraction as it avoids having to replace each individual variable in a set. For example, in a tank, you could specify level over time instead of flow rate out of the tank over time. As long as they are both indexed by time, there will be no problems as the number of constraints removed is equal to the number of constraints added.
+One Indexed Variable may be replaced by another Indexed Variable so long as the size of the indexed variables (the number of items in it's index set) are the same, and the model is still structurally sound afterwards; i.e there are no over or under-constrained variable sets. This is a convenient abstraction as it avoids having to replace each individual variable in a set. For example, in a tank, you could specify level over time instead of flow rate out of the tank over time. As long as they are both indexed by time, there will be no problems as the number of constraints removed is equal to the number of constraints added.
 
 #### Calculating Inlet Properties
 
@@ -435,16 +435,16 @@ Variable replacement enforces a degree of regularity in the blocks that make up 
 
 1. It fundamentally removes the problem of Degrees of Freedom when defining a model.
 2. It standardises initialisation routines, as long as guesses are provided for state variables. <!--, and provides a standardised basis for calculating scaling factors. -->
-3. The coupling of variables adds a level of interperetability to the model, which makes it easier to maintain and manipulate models.
+3. The coupling of variables adds a level of interpretability to the model, which makes it easier to maintain and manipulate models.
 
 
 ## Removing the problem of Squaring a Model
 
 To have a square model, you must have the same number of unknowns, or unfixed variables, as equations, i.e $n_{\text{degrees\ of\ freedom}} = 0$.
 
-Traditional model libraries such as IDAES provide the equations, and then all that is required is to specify enough variables that the number of variables equals the number of unknowns. This can be done by repeatedly fixing variables in a part of a model that is not already over-defined^[i.e You must fix variables that are part of a Dulmage-Mendelson underconstrained set.], until the model is fully defined. Incorrect degrees of freedom has been identified as a common source of errors in EOMs, and checking the degrees of freedom is the first recommended step to diagnose problems [@lee2024model]. Newer analysis methods, such as Dulmage-Mendelson Decomposition do make this simpler, but it is still an iterative process.
+Traditional model libraries such as IDAES provide the equations, and then all that is required is to specify enough variables that the number of variables equals the number of unknowns. This can be done by repeatedly fixing variables in a part of a model that is not already over-defined^[i.e You must fix variables that are part of a Dulmage-Mendelson under-constrained set.], until the model is fully defined. Incorrect degrees of freedom has been identified as a common source of errors in EOMs, and checking the degrees of freedom is the first recommended step to diagnose problems [@lee2024model]. Newer analysis methods, such as Dulmage-Mendelson Decomposition do make this simpler, but it is still an iterative process.
 
-Using a Variable Replacement approach, a set of state variables would be already defined by the model library, so the user would not need to square the model. There are zero degrees of freedom *by definition*. If a problem requires a variable to be fixed that is not a state variable, an appropriate^[i.e A state variable that would be part of the Dulmage-Mendelson overconstrained set if the other variable was fixed and nothing was unfixed] state variable must be unfixed too. As we add a degree of fredom every time we remove a degree of freedom, they 'cancel out' guaranteeing that we will continue to have a square model. This eliminates an entire class of errors with practical application of EOMs.
+Using a Variable Replacement approach, a set of state variables would be already defined by the model library, so the user would not need to square the model. There are zero degrees of freedom *by definition*. If a problem requires a variable to be fixed that is not a state variable, an appropriate^[i.e A state variable that would be part of the Dulmage-Mendelson over-constrained set if the other variable was fixed and nothing was unfixed] state variable must be unfixed too. As we add a degree of freedom every time we remove a degree of freedom, they 'cancel out' guaranteeing that we will continue to have a square model. This eliminates an entire class of errors with practical application of EOMs.
 
 ## Simplified Initialisation <!--and Scaling -->
 
@@ -517,7 +517,7 @@ EOMs are generally considered as a finished product, and their evolution and dev
 - Removing a set of variables and/or constraints from a model (e.g removing a unit operation that is not required in a model)
 - Replacing a fixed variable with a constraint to define that variable.
 
-Because the number of unfixed variables must always be the same as the number of constraints, when unfixed variables are added or removed, the same number of constraints need to be added or removed too. However, this is a non-trivial process. If a variable is removed, which constraint should be removed with it? This problem compounds when you are removing multiple variables and constraints simeoultaneously. 
+Because the number of unfixed variables must always be the same as the number of constraints, when unfixed variables are added or removed, the same number of constraints need to be added or removed too. However, this is a non-trivial process. If a variable is removed, which constraint should be removed with it? This problem compounds when you are removing multiple variables and constraints simultaneously. 
 
 ![Deleting the pump from a flowsheet is handled elegantly as the fixed variables are coupled to specific state variables.](assets/deleting-replacement.drawio.png)
 
@@ -530,14 +530,14 @@ When the pump is removed from the flowsheet, the intermediate stream becomes the
 
 Using a traditional modelling methodology, there is no coupling of variables, so when the pump is deleted there is no information provided on what variables to remove. There are two options:
 
-1. Fix the inlet conditions automatically, similar to the strategy in variable replacement. This will leave you with an overdefined model, as pressure would still be fixed on the outlet also. The modeller would have to manually unfix outlet pressure to again have a solveable model.
-2. Don't fix the inlet conditions automatically. This would leave you with an under-defined model, and the modeller would have to choose two variables to fix (e.g inlet temperature and flow) to again have a solveable model.
+1. Fix the inlet conditions automatically, similar to the strategy in variable replacement. This will leave you with an over-defined model, as pressure would still be fixed on the outlet also. The modeller would have to manually unfix outlet pressure to again have a solvable model.
+2. Don't fix the inlet conditions automatically. This would leave you with an under-defined model, and the modeller would have to choose two variables to fix (e.g inlet temperature and flow) to again have a solvable model.
 
-Both of these options require manual intervention from the modeller, as there is no clear path to maintain a solveable model. In comparison, when fixed variables are coupled to a set of state variables, it is easy to see when to unfix the variable: when the state var it is connected to is removed. 
+Both of these options require manual intervention from the modeller, as there is no clear path to maintain a solvable model. In comparison, when fixed variables are coupled to a set of state variables, it is easy to see when to unfix the variable: when the state var it is connected to is removed. 
 
-### Analysing Interperetability
+### Analysing interpretability
 
-Whether the method of replacement improves interpretability and maintanability is a subjective question. Nonetheless, these examples demonstrate the basic properties of Variable Replacement, and the advantages that it can provide in understanding the relationships between fixed variables in the system, without needing to dig into the underlying mathematical formulations. This also makes it simpler to modify a model and maintain a solveable state. However, similar to typed languages in software development, the realisable benefit may depend on the use case. 
+Whether the method of replacement improves interpretability and maintainability is a subjective question. Nonetheless, these examples demonstrate the basic properties of Variable Replacement, and the advantages that it can provide in understanding the relationships between fixed variables in the system, without needing to dig into the underlying mathematical formulations. This also makes it simpler to modify a model and maintain a solvable state. However, similar to typed languages in software development, the realisable benefit may depend on the use case. 
 
 # Case Study: Geothermal Power Plant
 
@@ -547,7 +547,7 @@ A model of a geothermal plant, outlined in [@severinsen2024digital] is shown her
 
 However, the plant data includes stream pressures and temperatures, so the mechanical work and heat transfer coefficients are not actually set in this model. Instead, they are replaced with the pressure or temperature measured on the stream flowing out of the unit operations. Because of the replacement system, it is easy to see exactly why each of these temperatures and pressures need to be specified, and why the other streams (e.g from the recouperator to the condenser) do not need their properties specified.
 
-Those familiar with control systems may note that the variable replacement approach for the pump looks similar to the control scheme of a pump in a P&ID Diagram, where the amount of work the pump does is controlled by a PID tuner that reads from a pressure sensor. The concept is not exactly analagous for heat exchangers, where the sizing is pre-determined, but the parallels may be helpful in gaining an intuition for how degrees of freedom replacement behaves.
+Those familiar with control systems may note that the variable replacement approach for the pump looks similar to the control scheme of a pump in a P&ID Diagram, where the amount of work the pump does is controlled by a PID tuner that reads from a pressure sensor. The concept is not exactly analogous for heat exchangers, where the sizing is pre-determined, but the parallels may be helpful in gaining an intuition for how degrees of freedom replacement behaves.
 
 Of particular note is the flow in the brine inlet. The factory does not record the brine flow in, however it does record the total flow out. Thus, we can replace the Brine inlet flow with the Total flow, and the Brine flow will be back-calculated. Note that the brine outlet flow is specified much later downstream from the brine inlet. When this happens in conventional Degree of Freedom replacement systems, it can be very hard to understand why the brine outlet flow needs to be specified. By using a Variable Replacement approach, it is immediately obvious. Specifying stream properties downstream of an operation, sometimes significantly downstream, is a common practice when modelling, and Variable replacement makes it easier to understand why these properties need to be specified.
 
@@ -557,9 +557,9 @@ Of particular note is the flow in the brine inlet. The factory does not record t
 
 A dynamic flowsheet allows us to test a different aspect of our system: how indexed variables are handled. In this flowsheet, we have a steam tank, modelled as a Heater in idaes, with a constant volume and an inlet and outlet valve controlling the flow rate in and out of the tank. The flow into the tank is controlled by a PID controller, which is targeting a certain outlet pressure within the tank.
 
-Both the valves have two state variables: the valve coefficient, and the valve opening fraction. However, the valve coefficient is a constant property; it cannot be changed throughout the simulation. To indicate this, we have included an asterisk (*) next to them. In contrast, the valve opening fraction can be changed over time, and so in IDAES it is indexed by time. It is actually a set of variables, one variable for every time step across the simulation. Variables with an asterisk next to them cannot replace variables without an asterisk and vice versa, because the time indexed variables actually repreresent many degrees of freedom, while the others only represent one degree of freedom. However, in almost all cases it makes sense to treat the variable across time in the same manner (either you want to fix it, or you don't.)
+Both the valves have two state variables: the valve coefficient, and the valve opening fraction. However, the valve coefficient is a constant property; it cannot be changed throughout the simulation. To indicate this, we have included an asterisk (*) next to them. In contrast, the valve opening fraction can be changed over time, and so in IDAES it is indexed by time. It is actually a set of variables, one variable for every time step across the simulation. Variables with an asterisk next to them cannot replace variables without an asterisk and vice versa, because the time indexed variables actually represent many degrees of freedom, while the others only represent one degree of freedom. However, in almost all cases it makes sense to treat the variable across time in the same manner (either you want to fix it, or you don't.)
 
-In this flowsheet, only two replacements are required. The first involves replacing the inlet flow with the outlet pressure. These can be replaced becasue a pressure difference between the inlet and the outlet is what drives the fluid through the system. The flow can be calculated from the valve pressure-flow correllation. Both pressure and flow are time-indexed properties, so they each represent the same number of degrees of freedom. Note that with our initialisation strategy, we start with a guess for flow, and then we initialise with that. After initialisation is completed, the flowsheet re-solves with the correct outlet pressure fixed, recalculating what the true flow value is.
+In this flowsheet, only two replacements are required. The first involves replacing the inlet flow with the outlet pressure. These can be replaced because a pressure difference between the inlet and the outlet is what drives the fluid through the system. The flow can be calculated from the valve pressure-flow correlation. Both pressure and flow are time-indexed properties, so they each represent the same number of degrees of freedom. Note that with our initialisation strategy, we start with a guess for flow, and then we initialise with that. After initialisation is completed, the flowsheet re-solves with the correct outlet pressure fixed, recalculating what the true flow value is.
 
 The second replacement involves replacing the valve opening fraction with the setpoint. The PID controller sets the value of the valve opening fraction, so the valve opening fraction no longer needs to be specified. This goes against the general logic of variable replacement. However, the setpoint of the PID controller needs to be specified. So we can add a replacement to say that the setpoint replaces the valve opening fraction. This is a simple solution that can be done when the PID controller is connected up to the valve opening fraction.
 
@@ -589,7 +589,7 @@ One of the major advantages of Variable Replacement that we have noticed in a GU
 
 Working with a GUI also means that adding and removing unit operations is common, and Variable Replacement provides a sensible way to deal with adding or removing unit operations. When a unit operation is added, it's state variables and inlet ports are fixed by default to ensure the degrees of freedom are still zero. When a unit operation is removed, anything that is replacing it's state variables is also unfixed, and any inlet ports that were previously connected to the outlet of the unit operation are fixed, again keeping the degrees of freedom at zero. 
 
-The GUI also does not provide any way to write custom initialisation routines, because these are usually specified as python code and can be quite complex, so it is out of scope of the project. However, the multi-stage initialisation that naturally works with variable replacement helps to improve the reliability of solving. As guesses are specified for the state variables, these can be used in the initialisation routine. In particular, this enables us to specify any set of variables to define the conditions of an inlet stream, wheras IDAES does not have initialisation routines for any set of state variables and is typically limited to only a certain set of properties.
+The GUI also does not provide any way to write custom initialisation routines, because these are usually specified as python code and can be quite complex, so it is out of scope of the project. However, the multi-stage initialisation that naturally works with variable replacement helps to improve the reliability of solving. As guesses are specified for the state variables, these can be used in the initialisation routine. In particular, this enables us to specify any set of variables to define the conditions of an inlet stream, whereas IDAES does not have initialisation routines for any set of state variables and is typically limited to only a certain set of properties.
 
 <!--While scaling methods have not been built into the Ahuora Digital Twin Platform at this time, they could also be based off scaling factors for the state variables in a similar manner to initialisation.-->
 
@@ -607,6 +607,6 @@ While this paper introduces Variable Replacement as a method and purview it's po
 
 ## Pyomo-Replace Source code
 
-A sample implementation of replacement logic in Pyomo, along with the initialisation tests and geothermal model example, are avaliable at [https://github.com/bertkdowns/pyomo-replace](https://github.com/bertkdowns/pyomo-replace).
+A sample implementation of replacement logic in Pyomo, along with the initialisation tests and geothermal model example, are available at [https://github.com/bertkdowns/pyomo-replace](https://github.com/bertkdowns/pyomo-replace).
 
 # Bibliography
