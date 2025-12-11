@@ -161,34 +161,34 @@ This section outlines how Variable Replacement is defined on an EOM, borrowing t
 An EOM be viewed mathematically as 
 
 $$
-\mathcal{M} = (x, C, F)
+\mathcal{M} = (\hat{x}, C, F)
 $$
 
 where:
 
 
-$x = (x_1,...,x_n )$ is a vector of $n$ variables,
+$\hat{x} = (x_1,...,x_n )$ is a vector of $n$ variables $\hat{x} ∈ ℝ^n$,
 
-$C = \{c_i: i = 1,...,m\}$ is a set of $m$ functions such that $c_i(x) = 0$ for all valid solutions of $x$,
+$C = \{c_i: i = 1,...,m\}$ is a set of $m$ functions such that $c_i(\hat{x}) = 0$ for all valid solutions of $x$,
 
-$F = \{f_i: i ∈ S \}, S ⊆ \{1,...,n\}$ is an additional set of functions of the form $f_i(x):= x_i - \bar{x}_i$, such that $f_i(x) = 0$ for all valid solutions of $x$, fixing the variable $x_i$ to the value $\bar{x_i}$.
+$F = \{f_i: i ∈ S \}, S ⊆ \{1,...,n\}$ is an additional set of functions of the form $f_i(\hat{x}):= x_i - \bar{x}_i$, such that $f_i(\hat{x}) = 0$ for all valid solutions of $x$, fixing the variable $x_i$ to the value $\bar{x_i}$.
 
 
 
 The set of feasible solutions can be given as:
 
 $$
-\mathcal{S} = \{ x ∈ R^n : C(x) = 0, F(x) = 0 \}.
+\mathcal{S} = \{C(\hat{x}) = 0, F(\hat{x}) = 0 \}.
 $$
 
-In other words, we need to find $x$ such that $c(x) = 0 \; ∀c ∈ C$ and  $f(x) = 0 \; ∀f ∈ F$.
+In other words, we need to find $x$ such that $c(\hat{x}) = 0 \; ∀c ∈ C$ and  $f(\hat{x}) = 0 \; ∀f ∈ F$.
 
 ### Degrees of freedom
 
 The number of degrees of freedom of the model is defined as:
 
 $$
-\text{DoF} = |x| - |F| - |C| 
+\text{DoF} = |\hat{x}| - |F| - |C| 
 $$
 
 Or the number of variables minus the number of fixed variables minus the number of constraints.
@@ -214,13 +214,13 @@ Where the Jacobian is square, the Degrees of Freedom is zero.-->
 
 ### Replacement
 
-Variable replacement is a method of changing which variables in the model are fixed. We start with a fully defined model $\mathcal{M} = (x, C, F)$ such that:
+Variable replacement is a method of changing which variables in the model are fixed. We start with a fully defined model $\mathcal{M} = (\hat{x}, C, F)$ such that:
 
 $$
-DoF(\mathcal{M}) = |x| - |F| - |C|  = 0
+DoF(\mathcal{M}) = |\hat{x}| - |F| - |C|  = 0
 $$
 
-Fixing a variable $V_i$ at index $i$ involves adding a constraint $f_i$ to $F$. We define $F' = F ∪ \{f_i\}$. However, if this is used in a model, $DoF((x,C,F')) = -1$ so the model would be over-defined and potentially have no solutions. 
+Fixing a variable $V_i$ at index $i$ involves adding a constraint $f_i$ to $F$. We define $F' = F ∪ \{f_i\}$. However, if this is used in a model, $DoF((\hat{x},C,F')) = -1$ so the model would be over-defined and potentially have no solutions. 
 
 To solve this, we also choose an existing fixed variable to unfix, by removing it's constraint $f_j$ from $F$. This gives us a new set of constraints
 
@@ -231,7 +231,7 @@ $$
 and a new model 
 
 $$
-\mathcal{M}_{new} = (x,C,F_{new})
+\mathcal{M}_{new} = (\hat{x},C,F_{new})
 $$
 
 
@@ -249,7 +249,7 @@ $$
 We can define a vector of variables $x$:
 
 $$
-x :=
+\hat{x} :=
 \begin{pmatrix}
 v \\
 k \\
@@ -266,7 +266,7 @@ x → ky - v\\
 \end{Bmatrix}
 $$
 
-As $|x| - |C| = 2$, we need to fix 2 variables to have zero degrees of freedom. These two variables will become our state variables, the ones "fixed by default" in the model.
+As $|\hat{x}| - |C| = 2$, we need to fix two variables to have zero degrees of freedom. These two variables will become our state variables, the ones "fixed by default" in the model.
 
 Choosing which variables are the state variables is an important step in the Variable Replacement Methodology. It is best to choose variables that are decision variables (either variables chosen during design, or manipulated via the control system) rather than output or dependent variables.
 
@@ -277,8 +277,8 @@ If we specify $k = 1, y = 0.2$, then we can define $F$ as follows:
 $$
 F :=
 \begin{Bmatrix}
-x → k - 1 \\
-x → y - 0.2  \\
+\hat{x} → k - 1 \\
+\hat{x} → y - 0.2  \\
 \end{Bmatrix}
 $$
 
@@ -288,8 +288,8 @@ This defines the initial model, which can be solved to an exact solution. If the
 $$
 F' :=
 \begin{Bmatrix}
-x → k - 1 \\
-x → v - 7.5  \\
+\hat{x} → k - 1 \\
+\hat{x} → v - 7.5  \\
 \end{Bmatrix}
 $$
 
