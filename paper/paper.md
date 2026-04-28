@@ -2,7 +2,13 @@
 title: "Variable Replacement: A Novel Technique for Managing Degrees of Freedom in Large Equation-Oriented Process Models"
 bibliography: refs.bib
 ---
-<!--- a control perspective on managing complexity... -->
+<!---
+
+another interesting case to look into:
+
+https://github.com/waikato-ahuora-smart-energy-systems/Ahuora-Adaptive-Digital-Twin-Platform/issues/2059
+
+ a control perspective on managing complexity... -->
 \newpage
 
 # Abstract
