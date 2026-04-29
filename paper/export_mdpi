@@ -1,8 +1,32 @@
 #!/bin/bash
 
-pandoc -f markdown+smart+raw_tex -t latex paper.md -o template/content.tex --bibliography=refs.bib \
+set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TEMPLATE_DIR="$SCRIPT_DIR/template"
+TMP_CONTENT="$TEMPLATE_DIR/content.generated.tex"
 
-cd template
+pandoc \
+  -f markdown+smart+raw_tex \
+  -t latex \
+  --natbib \
+  "$SCRIPT_DIR/paper.md" \
+  -o "$TMP_CONTENT"
 
-latexmk -pdf template
+perl -0pe '
+  s/^.*?\\hypertarget\{introduction\}\{\%\s*/\\hypertarget{introduction}{%\n/s;
+  s/\\newpage\s*\z//s;
+  s{\Qassets/\E}{../assets/}g;
+  s/∈/\\in /g;
+  s/ℝ/\\mathbb{R}/g;
+  s/⊆/\\subseteq /g;
+  s/∀/\\forall /g;
+  s/∪/\\cup /g;
+  s/→/\\to /g;
+  s/200°C/200~\\\$^\\\\circ\\\$C/g;
+' "$TMP_CONTENT" > "$TEMPLATE_DIR/content.tex"
+
+rm -f "$TMP_CONTENT"
+
+cd "$TEMPLATE_DIR"
+latexmk -pdf template.tex

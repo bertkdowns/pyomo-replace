@@ -1,0 +1,112 @@
+\begin{thebibliography}{999}
+
+\bibitem[Walmsley et~al.(2024)Walmsley, Patros, Yu, Young, Burroughs, Apperley,
+  Carson, Udugama, Aeowjaroenlap, Atkins, et~al.]{walmsley2024adaptive}
+Walmsley, T.G.; Patros, P.; Yu, W.; Young, B.R.; Burroughs, S.; Apperley, M.;
+  Carson, J.K.; Udugama, I.A.; Aeowjaroenlap, H.; Atkins, M.J.;  et~al.
+\newblock Adaptive digital twins for energy-intensive industries and their
+  local communities.
+\newblock {\em Digital Chemical Engineering} {\bf 2024}, {\em 10},~100139.
+
+\bibitem[Shacham et~al.(1982)Shacham, Macchieto, Stutzman, and
+  Babcock]{shacham1982equation}
+Shacham, M.; Macchieto, S.; Stutzman, L.; Babcock, P.
+\newblock Equation oriented approach to process flowsheeting.
+\newblock {\em Computers \& Chemical Engineering} {\bf 1982}, {\em 6},~79--95.
+
+\bibitem[Miller et~al.(2018)Miller, Siirola, Agarwal, Burgard, Lee, Eslick,
+  Nicholson, Laird, Biegler, Bhattacharyya, et~al.]{miller2018next}
+Miller, D.C.; Siirola, J.D.; Agarwal, D.; Burgard, A.P.; Lee, A.; Eslick, J.C.;
+  Nicholson, B.; Laird, C.; Biegler, L.T.; Bhattacharyya, D.;  et~al.
+\newblock Next generation multi-scale process systems engineering framework. In
+  {\em Computer Aided Chemical Engineering}; Elsevier,  2018; Vol.~44, pp.
+  2209--2214.
+
+\bibitem[Biegler(2010)]{biegler2010nonlinear}
+Biegler, L.T.
+\newblock {\em Nonlinear programming: concepts, algorithms, and applications to
+  chemical processes}; SIAM,  2010.
+
+\bibitem[Jusevi{\v{c}}ius et~al.(2021)Jusevi{\v{c}}ius, Oberdieck, and
+  Paulavi{\v{c}}ius]{jusevivcius2021experimental}
+Jusevi{\v{c}}ius, V.; Oberdieck, R.; Paulavi{\v{c}}ius, R.
+\newblock Experimental analysis of algebraic modelling languages for
+  mathematical optimization.
+\newblock {\em Informatica} {\bf 2021}, {\em 32},~283--304.
+
+\bibitem[Hart et~al.(2011)Hart, Watson, and Woodruff]{hart2011pyomo}
+Hart, W.E.; Watson, J.P.; Woodruff, D.L.
+\newblock Pyomo: modeling and solving mathematical programs in Python.
+\newblock {\em Mathematical Programming Computation} {\bf 2011}, {\em
+  3},~219--260.
+
+\bibitem[Nicholson et~al.(2018)Nicholson, Siirola, Watson, Zavala, and
+  Biegler]{nicholson2018pyomo}
+Nicholson, B.; Siirola, J.D.; Watson, J.P.; Zavala, V.M.; Biegler, L.T.
+\newblock pyomo. dae: A modeling and automatic discretization framework for
+  optimization with differential and algebraic equations.
+\newblock {\em Mathematical Programming Computation} {\bf 2018}, {\em
+  10},~187--223.
+
+\bibitem[Bynum et~al.(2021)Bynum, Hackebeil, Hart, Laird, Nicholson, Siirola,
+  Watson, Woodruff, et~al.]{bynum2021pyomo}
+Bynum, M.L.; Hackebeil, G.A.; Hart, W.E.; Laird, C.D.; Nicholson, B.L.;
+  Siirola, J.D.; Watson, J.P.; Woodruff, D.L.;  et~al.
+\newblock {\em Pyomo-optimization modeling in python}; Springer,  2021.
+
+\bibitem[Dowling and Biegler(2015)]{dowling2015framework}
+Dowling, A.W.; Biegler, L.T.
+\newblock A framework for efficient large scale equation-oriented flowsheet
+  optimization.
+\newblock {\em Computers \& Chemical Engineering} {\bf 2015}, {\em 72},~3--20.
+
+\bibitem[Luyben(1996)]{luyben1996design}
+Luyben, W.L.
+\newblock Design and control degrees of freedom.
+\newblock {\em Industrial \& engineering chemistry research} {\bf 1996}, {\em
+  35},~2204--2214.
+
+\bibitem[Bunus and Fritzson(2001)]{bunus2001debugging}
+Bunus, P.; Fritzson, P.
+\newblock A debugging scheme for declarative equation based modeling languages.
+\newblock In Proceedings of the International Symposium on Practical Aspects of
+  Declarative Languages. Springer,  2001, pp. 280--298.
+
+\bibitem[Lee et~al.(2024)Lee, Parker, Poon, Gunter, Dowling, and
+  Nicholson]{lee2024model}
+Lee, A.; Parker, R.; Poon, S.; Gunter, D.; Dowling, A.; Nicholson, B.
+\newblock Model Diagnostics for Equation Oriented Models: Roadblocks and the
+  Path Forward.
+\newblock Technical report, National Energy Technology Laboratory (NETL),
+  Pittsburgh, PA, Morgantown, WV~…,  2024.
+
+\bibitem[Nilsson(2008)]{nilsson2008type}
+Nilsson, H.
+\newblock Type-Based Structural Analysis for Modular Systems of Equations.
+\newblock In Proceedings of the EOOLT,  2008, pp. 71--81.
+
+\bibitem[Bahainv et~al.(2016)Bahainv, Schichl, and
+  Neumaier]{bahainv2016tearing}
+Bahainv, A.; Schichl, H.; Neumaier, A.
+\newblock Tearing systems of nonlinear equations. I. A survey,  2016.
+
+\bibitem[Severinsen et~al.(2024)Severinsen, Yu, Walmsley, and
+  Young]{severinsen2024digital}
+Severinsen, I.; Yu, W.; Walmsley, T.G.; Young, B.
+\newblock Digital Twins in Operation: The Role of Robust Surrogate Modelling.
+  In {\em Computer Aided Chemical Engineering}; Elsevier,  2024; Vol.~53, pp.
+  2869--2874.
+
+\bibitem[Wagner and Pru{\ss}(2002)]{wagner2002iapws}
+Wagner, W.; Pru{\ss}, A.
+\newblock The IAPWS formulation 1995 for the thermodynamic properties of
+  ordinary water substance for general and scientific use.
+\newblock {\em Journal of physical and chemical reference data} {\bf 2002},
+  {\em 31},~387--535.
+
+\bibitem[{WaterTAP Documentation}(2024)]{watertap_pressure_exchanger}
+{WaterTAP Documentation}.
+\newblock Pressure Exchanger Model,  2024.
+\newblock Accessed: 2024-06-09.
+
+\end{thebibliography}

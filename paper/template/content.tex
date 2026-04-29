@@ -1,34 +1,3 @@
-\newpage
-
-\hypertarget{abstract}{%
-\section{Abstract}\label{abstract}}
-
-Process models and Process Digital Twins frequently rely on
-equation-oriented models to encode the behaviour of a factory. As
-equation-oriented models grow in complexity, reasoning about their
-structure becomes harder. This paper proposes an alternative workflow to
-using degrees of freedom analysis to build equation-oriented models,
-inspired by control systems. A set of properties for each unit operation
-is chosen to fully specify the state; this is the set of properties you
-design or control. These can then be replaced by other variables as
-required for a specific case. This approach is demonstrated in the
-equation-oriented modelling tool Pyomo. Benefits in model
-interpretability, maintentance, initialisation, and application are
-discussed. Various case studies demonstrate how processes can be
-modelled in this manner, and how these techniques may prove advantageous
-in a graphical user interface for process design. These methods may be
-adopted by the process modelling community to make it easier to build
-and maintain large equation-oriented models.
-
-\newpage
-
-\hypertarget{glossary}{%
-\section{Glossary}\label{glossary}}
-
-\textbf{AML}: Algebraic Modelling Language
-
-\textbf{EOM}: Equation-Oriented Model
-
 \hypertarget{introduction}{%
 \section{Introduction}\label{introduction}}
 
@@ -38,15 +7,15 @@ computing resources and networked sites, process modelling has become
 more critical than ever before. One way this is shown is in the rise in
 popularity of Digital Twins, which try to make a complete and
 comprehensive model of many different properties of entire sites and
-their surroundings (Walmsley et al. 2024). As these models have become
-larger, being able to understand all of the constraints within the
-system simultaneously becomes harder and harder, making it harder to
+their surroundings \citep{walmsley2024adaptive}. As these models have
+become larger, being able to understand all of the constraints within
+the system simultaneously becomes harder and harder, making it harder to
 run, interpret, or adjust the model.
 
 A powerful tool to represent processes is equation-oriented algebraic
 modelling, as processes often closely follow first-principles behaviour
 and include non-linear dynamics, two things that equation-oriented
-modelling excels at (Shacham et al. 1982). At its simplest,
+modelling excels at \citep{shacham1982equation}. At its simplest,
 equation-oriented modelling involves specifying equations to represent
 the system, and solving those equations to find the unknown properties.
 However, modern processes are very complex, and Digital Twin technology
@@ -70,9 +39,9 @@ of variables to constrain. Then, those using the model can constrain
 other variables, but only if they choose an another variable to
 un-constrain. This method will simplify the process of squaring and
 initialising a model. Our library, pyomo-replace, demonstrates some
-advantages of this approach in the Pyomo and IDAES (Miller et al. 2018)
-ecosystem, and the Ahuora Platform provides a case study of this
-approach in a graphical application.
+advantages of this approach in the Pyomo and IDAES
+\citep{miller2018next} ecosystem, and the Ahuora Platform provides a
+case study of this approach in a graphical application.
 
 \hypertarget{literature-review}{%
 \subsection{Literature Review}\label{literature-review}}
@@ -82,7 +51,7 @@ approach in a graphical application.
 Modelling}\label{equation-oriented-modelling}}
 
 Fundamentally, an EOM is simply a set of mathematical equations,
-optionally with an objective function (Biegler 2010).
+optionally with an objective function \citep{biegler2010nonlinear}.
 
 \[
 \begin{aligned}
@@ -129,16 +98,16 @@ data structures.
 Traditionally, EOMs were built in special-purpose languages, such as
 GAMS and AMPL. More recently they have moved to general-purpose
 programming languages, which have extra tooling available that allow you
-to build and initialise large EOMs programmatically (Jusevičius,
-Oberdieck, and Paulavičius 2021). Some of the main modern
+to build and initialise large EOMs programmatically
+\citep{jusevivcius2021experimental}. Some of the main modern
 equation-oriented modelling tools include JuMP, built on Julia, and
 Pyomo, built on python.
 
 We will focus on Pyomo in particular here, as it was built with process
 modelling in mind and has good libraries to aid in process modelling
-(Hart, Watson, and Woodruff 2011). It is a framework for building
-mathematical models that is written in Python . It includes tools to
-manage abstraction and complexity in a mathematical model, and to define
+\citep{hart2011pyomo}. It is a framework for building mathematical
+models that is written in Python . It includes tools to manage
+abstraction and complexity in a mathematical model, and to define
 initialisation routines and scaling factors to enhance numerical
 stability. The equation-oriented modelling framework Pyomo includes the
 following abstractions:
@@ -186,15 +155,15 @@ are of particular relevance to Process Modelling:
   \emph{Pyomo.DAE} allows defining Differential Algebraic Equations
   across ``infinite'' sets that are discretised, automatically creating
   the necessary constraints to define derivatives and integrals
-  (Nicholson et al. 2018). This is naturally useful in process modelling
-  to create 1D simulations across time, taking in to account holdup,
-  tank level, and so forth.
+  \citep{nicholson2018pyomo}. This is naturally useful in process
+  modelling to create 1D simulations across time, taking in to account
+  holdup, tank level, and so forth.
 \item
   \emph{Pyomo.network} allows you to represent your model as a graph:
   Blocks become nodes in the graph, and they can be connected to other
   nodes via edges called ``arcs'' that define equality constraints
-  between variables (Bynum et al. 2021). In many domains the graph view
-  better represents the model structure. It also allows propagating
+  between variables \citep{bynum2021pyomo}. In many domains the graph
+  view better represents the model structure. It also allows propagating
   initial values throughout a model. This is of particular importance as
   it allows sharing of information between distinct blocks. In a
   process, it is natural to use this interface to encode the connections
@@ -204,15 +173,15 @@ are of particular relevance to Process Modelling:
 
 Pyomo's construction techniques make it possible to create libraries of
 pre-written blocks, containing all the constraints and variables to
-model a piece of a physical system (Dowling and Biegler 2015). One such
-library is IDAES-PSE. Built on top of Pyomo, it creates blocks to
+model a piece of a physical system \citep{dowling2015framework}. One
+such library is IDAES-PSE. Built on top of Pyomo, it creates blocks to
 represent chemical unit operations such as compressors, heaters, tanks,
-and many more (Miller et al. 2018). It uses pyomo.DAE to represent time
-as a continuous differentiable property, and Pyomo.network to represent
-the connections between unit operations. Because the constraints are
-abstracted, the user doesn't have to think too much about the
-mathematical modelling - instead it is viewed a process simulation
-platform.
+and many more \citep{miller2018next}. It uses pyomo.DAE to represent
+time as a continuous differentiable property, and Pyomo.network to
+represent the connections between unit operations. Because the
+constraints are abstracted, the user doesn't have to think too much
+about the mathematical modelling - instead it is viewed a process
+simulation platform.
 
 \hypertarget{squaring-a-model}{%
 \subsubsection{Squaring a model}\label{squaring-a-model}}
@@ -239,7 +208,7 @@ the problem of Degrees of Freedom; usually they will not have specified
 the model sufficiently to be able to solve for an exact solution, i.e
 \(n_{\text{degrees\ of\ freedom}} > 0\). Identifying how many and which
 variables need to be ``fixed'' to make the model square can be a
-challenge (Luyben 1996).
+challenge \citep{luyben1996design}.
 
 There are a number of techniques to make it easier to square a model.
 
@@ -250,28 +219,28 @@ methods to calculate the number of degrees of freedom via static
 structural analysis, by subtracting the number of constraints from the
 number of variables.
 
-In (Bunus and Fritzson 2001), a method is proposed to help debug when a
+In \citep{bunus2001debugging}, a method is proposed to help debug when a
 model is singular, by using Dulmage-Mendelson Decomposition to identify
 sets of constraints that are over-constrained or under-constrained.
 These methods are commonly used in frameworks such as IDAES to help
-ensure a square model is valid (Lee et al. 2024). However, while these
-techniques are applicable to an entire ``flat'' system of equations, it
-is hard to apply them to an individual subsection of a model without
-understanding of what external constraints are applied. Some preliminary
-work has been conducted to show that in some cases issues can be
-identified in this level (Nilsson 2008), but it is limited in its
-ability to detect errors and does not appear to have much uptake in
-systems such as Pyomo. Additionally, Dulmage-Mendelson Decomposition
-provides a big list of over-constrained or under-constrained components,
-but does not provide any insight into which one of them should be
-constrained.
+ensure a square model is valid \citep{lee2024model}. However, while
+these techniques are applicable to an entire ``flat'' system of
+equations, it is hard to apply them to an individual subsection of a
+model without understanding of what external constraints are applied.
+Some preliminary work has been conducted to show that in some cases
+issues can be identified in this level \citep{nilsson2008type}, but it
+is limited in its ability to detect errors and does not appear to have
+much uptake in systems such as Pyomo. Additionally, Dulmage-Mendelson
+Decomposition provides a big list of over-constrained or
+under-constrained components, but does not provide any insight into
+which one of them should be constrained.
 
 Another technique is equation tearing, where a larger system is broken
 up into a smaller system. This tries to decompose the system into a set
-of equations that can be solved sequentially (Bahainv, Schichl, and
-Neumaier 2016). This method is used by pyomo.network (Bynum et al. 2021)
-as an initialisation strategy, but can also give some insight into what
-is required to specify the model as each submodel can be considered
+of equations that can be solved sequentially \citep{bahainv2016tearing}.
+This method is used by pyomo.network \citep{bynum2021pyomo} as an
+initialisation strategy, but can also give some insight into what is
+required to specify the model as each submodel can be considered
 independently. However, this is less effective at identifying degrees of
 freedom when the properties of the submodel are being set indirectly via
 downstream properties.
@@ -283,16 +252,16 @@ over or under specified and \emph{what} a more sensible choice should
 be. The problem of squaring a model has not often been analysed within
 the domain that the models are used.
 
-Taking a step back to look at the larger picture, Luyben et. al (Luyben
-1996) observed and discussed the correlation between degrees of freedom
-in design-time models and in control models, especially for reactors and
-distillation columns. This is because the things you specify in design
-time, such as inlet flow rates or outlet temperatures, need to be
-controlled in the real factory, usually by valves. They argue that
-calculating the number of controlled parameters in a plant is an easier
-way to understand the degrees of freedom of a process than by trying to
-analyse the number of equations and variables in a model that can be
-adjusted independently.
+Taking a step back to look at the larger picture, Luyben et. al
+\citep{luyben1996design} observed and discussed the correlation between
+degrees of freedom in design-time models and in control models,
+especially for reactors and distillation columns. This is because the
+things you specify in design time, such as inlet flow rates or outlet
+temperatures, need to be controlled in the real factory, usually by
+valves. They argue that calculating the number of controlled parameters
+in a plant is an easier way to understand the degrees of freedom of a
+process than by trying to analyse the number of equations and variables
+in a model that can be adjusted independently.
 
 Luyben et al.~raise an interesting link between design and control
 specification that will be explored further in this paper. By embedding
@@ -376,12 +345,12 @@ An EOM be viewed mathematically as
 where:
 
 \(\hat{x} = (x_1,...,x_n )\) is a vector of \(n\) variables
-\(\hat{x} ∈ ℝ^n\),
+\(\hat{x} \in \mathbb{R}^n\),
 
 \(C = \{c_i: i = 1,...,m\}\) is a set of \(m\) functions such that
 \(c_i(\hat{x}) = 0\) for all valid solutions of \(x\),
 
-\(F = \{f_i: i ∈ S \}, S ⊆ \{1,...,n\}\) is an additional set of
+\(F = \{f_i: i \in S \}, S \subseteq \{1,...,n\}\) is an additional set of
 functions of the form \(f_i(\hat{x}):= x_i - \bar{x}_i\), such that
 \(f_i(\hat{x}) = 0\) for all valid solutions of \(x\), fixing the
 variable \(x_i\) to the value \(\bar{x_i}\).
@@ -393,7 +362,7 @@ The set of feasible solutions can be given as:
 \]
 
 In other words, we need to find \(x\) such that
-\(c(\hat{x}) = 0 \; ∀c ∈ C\) and \(f(\hat{x}) = 0 \; ∀f ∈ F\).
+\(c(\hat{x}) = 0 \; \forall c \in C\) and \(f(\hat{x}) = 0 \; \forall f \in F\).
 
 \hypertarget{degrees-of-freedom}{%
 \subsubsection{Degrees of freedom}\label{degrees-of-freedom}}
@@ -424,7 +393,7 @@ DoF(\mathcal{M}) = |\hat{x}| - |F| - |C|  = 0
 \]
 
 Fixing a variable \(V_i\) at index \(i\) involves adding a constraint
-\(f_i\) to \(F\). We define \(F' = F ∪ \{f_i\}\). However, if this is
+\(f_i\) to \(F\). We define \(F' = F \cup \{f_i\}\). However, if this is
 used in a model, \(DoF((\hat{x},C,F')) = -1\) so the model would be
 over-defined and potentially have no solutions.
 
@@ -433,7 +402,7 @@ removing it's constraint \(f_j\) from \(F\). This gives us a new set of
 constraints
 
 \[
-F_{new} = (C \backslash \{f_j\}) ∪ \{f_i\}
+F_{new} = (C \backslash \{f_j\}) \cup \{f_i\}
 \]
 
 and a new model
@@ -470,7 +439,7 @@ And the equations can be rearranged into a functional form where C(x) =
 \[
 C :=
 \begin{Bmatrix}
-x → ky - v\\
+x \to ky - v\\
 \end{Bmatrix}
 \]
 
@@ -495,8 +464,8 @@ If we specify \(k = 1, y = 0.2\), then we can define \(F\) as follows:
 \[
 F :=
 \begin{Bmatrix}
-\hat{x} → k - 1 \\
-\hat{x} → y - 0.2  \\
+\hat{x} \to k - 1 \\
+\hat{x} \to y - 0.2  \\
 \end{Bmatrix}
 \]
 
@@ -511,8 +480,8 @@ variables:
 \[
 F' :=
 \begin{Bmatrix}
-\hat{x} → k - 1 \\
-\hat{x} → v - 7.5  \\
+\hat{x} \to k - 1 \\
+\hat{x} \to v - 7.5  \\
 \end{Bmatrix}
 \]
 
@@ -590,7 +559,7 @@ over-defined\footnote{i.e You must fix variables that are part of a
   Dulmage-Mendelson under-constrained set.}, until the model is fully
 defined. Incorrect degrees of freedom has been identified as a common
 source of errors in EOMs, and checking the degrees of freedom is the
-first recommended step to diagnose problems (Lee et al. 2024). Newer
+first recommended step to diagnose problems \citep{lee2024model}. Newer
 analysis methods, such as Dulmage-Mendelson Decomposition do make this
 simpler, but it is still an iterative process.
 
@@ -643,7 +612,7 @@ problems.
 
 \begin{figure}
 \centering
-\includegraphics{assets/initialisation-methods.drawio.png}
+\includegraphics{../assets/initialisation-methods.drawio.png}
 \caption{Alternative initialisation routine, making use of state
 variables to avoid the need for different initialisation methods.}
 \end{figure}
@@ -667,7 +636,7 @@ library developer freedom to develop whatever initialisation method they
 think is best.
 
 A test with the IDAES turbine model demonstrates this to be the case. A
-turbine model was constructed, with 100 mol/s of 200°C steam at 1MPa, an
+turbine model was constructed, with 100 mol/s of 200~$^\circ$C steam at 1 MPa, an
 isentropic efficiency of 50\% and a pressure drop of 900 kPa. Different
 combinations of variables were fixed, and then the model was initialised
 and then solved with those fixed variables using IDAES's standard
@@ -774,7 +743,7 @@ include the following variables as shown in Figure \ref{compressor-dof}.
 
 \begin{figure}
 \centering
-\includegraphics{assets/compressor-5dof.drawio.png}
+\includegraphics{../assets/compressor-5dof.drawio.png}
 \caption{Variables in a simple compressor model. \label{compressor-dof}}
 \end{figure}
 
@@ -784,7 +753,7 @@ Model (Figure \ref{compressor-sv-defined}).
 
 \begin{figure}
 \centering
-\includegraphics{assets/compressor-sv.drawio.png}
+\includegraphics{../assets/compressor-sv.drawio.png}
 \caption{Variables in a simple compressor model, with everything that is
 not a fixed greyed out. \label{compressor-sv-defined}}
 \end{figure}
@@ -800,7 +769,7 @@ instead of the mechanical work (Figure
 
 \begin{figure}
 \centering
-\includegraphics{assets/compressor-fixed-outlet.drawio.png}
+\includegraphics{../assets/compressor-fixed-outlet.drawio.png}
 \caption{Fully specified compressor model using a traditional approach.
 \label{compressor-fixed-traditional}}
 \end{figure}
@@ -812,7 +781,7 @@ work was replaced by (Figure \ref{compressor-replacement}).
 
 \begin{figure}
 \centering
-\includegraphics{assets/compressor-replaced.drawio.png}
+\includegraphics{../assets/compressor-replaced.drawio.png}
 \caption{Compressor model using the variable replacement system, with
 Outlet Pressure replacing Mechanical Work.
 \label{compressor-replacement}}
@@ -870,7 +839,7 @@ are removing multiple variables and constraints simultaneously.
 
 \begin{figure}
 \centering
-\includegraphics{assets/deleting-replacement.drawio.png}
+\includegraphics{../assets/deleting-replacement.drawio.png}
 \caption{Deleting the pump from a flowsheet is handled elegantly as the
 fixed variables are coupled to specific state variables.}
 \end{figure}
@@ -890,7 +859,7 @@ longer needs to be fixed. Thus, the model is still fully specified.
 
 \begin{figure}
 \centering
-\includegraphics{assets/deleting-traditional.drawio.png}
+\includegraphics{../assets/deleting-traditional.drawio.png}
 \caption{Using a traditional modelling methodology, there is no coupling
 of variables, so when the pump is deleted there is no intuition what
 variables to remove.}
@@ -953,20 +922,21 @@ building equation oriented models from sets of pre-configured equations.
 
 \begin{figure}
 \centering
-\includegraphics{assets/geothermal-replacement.drawio.png}
+\includegraphics{../assets/geothermal-replacement.drawio.png}
 \caption{Flow Diagram of a fully specified Geothermal Power Plant,
 demonstrating which state variables are being replaced.}
 \end{figure}
 
-A model of a geothermal plant, outlined in (Severinsen et al. 2024) is
-shown here as a test case. This model includes four heat exchangers (the
-condenser, recouperator, preheater, and vaporiser), one turbine, and one
-pump. Each of these unit operations contribute one or two degrees of
-freedom: The heat exchangers need Area and Heat Transfer Coefficient
-(abbreviated as HTC) to be specified, and the Turbine and Pump both need
-efficiency and mechanical work. Additionally, the Steam Inlet, Air
-inlet, and Brine inlet need their temperature, pressure, and flow to be
-specified, as they are not connected to any upstream unit operations.
+A model of a geothermal plant, outlined in \citep{severinsen2024digital}
+is shown here as a test case. This model includes four heat exchangers
+(the condenser, recouperator, preheater, and vaporiser), one turbine,
+and one pump. Each of these unit operations contribute one or two
+degrees of freedom: The heat exchangers need Area and Heat Transfer
+Coefficient (abbreviated as HTC) to be specified, and the Turbine and
+Pump both need efficiency and mechanical work. Additionally, the Steam
+Inlet, Air inlet, and Brine inlet need their temperature, pressure, and
+flow to be specified, as they are not connected to any upstream unit
+operations.
 
 However, the plant data includes stream pressures and temperatures, so
 the mechanical work and heat transfer coefficients are not actually set
@@ -1003,7 +973,7 @@ need to be specified.
 
 \begin{figure}
 \centering
-\includegraphics{assets/dynamics.drawio.png}
+\includegraphics{../assets/dynamics.drawio.png}
 \caption{A model of a tank with valves controlling the inlet and the
 outlet. Properties with an asterisk (*) next to them are not
 time-indexed. The tank outlet pressure is referenced by the PID
@@ -1067,7 +1037,7 @@ Platform}\label{ahuora-digital-twin-platform}}
 
 \begin{figure}
 \centering
-\includegraphics{assets/ahuora-interface.png}
+\includegraphics{../assets/ahuora-interface.png}
 \caption{A Heat pump in the Ahuora Platform.}
 \end{figure}
 
@@ -1094,7 +1064,7 @@ being replaced by which.
 
 \begin{figure}
 \centering
-\includegraphics{assets/ahuora-replacement.png}
+\includegraphics{../assets/ahuora-replacement.png}
 \caption{Variable replacement on a Compressor model in the Ahuora
 Platform.}
 \end{figure}
@@ -1166,7 +1136,6 @@ standardise the creation and use of libraries of EOMs. This would enable
 equation-oriented modelling to be used in a more maintainable way on
 large projects, such as Process Digital Twins, in the future.
 
-\newpage
 
 \hypertarget{appendix}{%
 \section{Appendix}\label{appendix}}
@@ -1297,7 +1266,7 @@ These lines:
   models with IDAES)
 \item
   Specify the fluid property package to model water, using the IAPWS95
-  specification (Wagner and Pruß 2002)
+  specification \citep{wagner2002iapws}
 \item
   Add a Compressor unit operation to the flowsheet, using the IAPWS95
   property package to model the properties of the water.
@@ -1413,8 +1382,8 @@ Inlets that are not connected to anything upstream are considered to be
 state variables. They can be replaced by other variables. This is
 generally fine, but some models are built with the expectation that
 inlet conditions are calculated. For example, the pressure exchanger
-model at (WaterTAP Documentation 2024) expects that the inlet flow on
-both sides is the same, meaning the flow of only one side needs to be
+model at \citep{watertap_pressure_exchanger} expects that the inlet flow
+on both sides is the same, meaning the flow of only one side needs to be
 fixed: the other side will be calculated to match. This type of model
 simply cannot work under the constraints we have applied on the system.
 
@@ -1457,99 +1426,3 @@ context for optimisation, as any state variables you unfix are the ones
 for which you are calculating an optimum value.
 
 \newpage
-
-\hypertarget{bibliography}{%
-\section*{Bibliography}\label{bibliography}}
-\addcontentsline{toc}{section}{Bibliography}
-
-\hypertarget{refs}{}
-\begin{cslreferences}
-\leavevmode\hypertarget{ref-bahainv2016tearing}{}%
-Bahainv, A, H Schichl, and A Neumaier. 2016. ``Tearing Systems of
-Nonlinear Equations. I. A Survey.''
-
-\leavevmode\hypertarget{ref-biegler2010nonlinear}{}%
-Biegler, Lorenz T. 2010. \emph{Nonlinear Programming: Concepts,
-Algorithms, and Applications to Chemical Processes}. SIAM.
-
-\leavevmode\hypertarget{ref-bunus2001debugging}{}%
-Bunus, Peter, and Peter Fritzson. 2001. ``A Debugging Scheme for
-Declarative Equation Based Modeling Languages.'' In \emph{International
-Symposium on Practical Aspects of Declarative Languages}, 280--98.
-Springer.
-
-\leavevmode\hypertarget{ref-bynum2021pyomo}{}%
-Bynum, Michael L, Gabriel A Hackebeil, William E Hart, Carl D Laird,
-Bethany L Nicholson, John D Siirola, Jean-Paul Watson, David L Woodruff,
-and others. 2021. \emph{Pyomo-Optimization Modeling in Python}.
-Springer.
-
-\leavevmode\hypertarget{ref-dowling2015framework}{}%
-Dowling, Alexander W, and Lorenz T Biegler. 2015. ``A Framework for
-Efficient Large Scale Equation-Oriented Flowsheet Optimization.''
-\emph{Computers \& Chemical Engineering} 72: 3--20.
-
-\leavevmode\hypertarget{ref-hart2011pyomo}{}%
-Hart, William E, Jean-Paul Watson, and David L Woodruff. 2011. ``Pyomo:
-Modeling and Solving Mathematical Programs in Python.''
-\emph{Mathematical Programming Computation} 3 (3): 219--60.
-
-\leavevmode\hypertarget{ref-jusevivcius2021experimental}{}%
-Jusevičius, Vaidas, Richard Oberdieck, and Remigijus Paulavičius. 2021.
-``Experimental Analysis of Algebraic Modelling Languages for
-Mathematical Optimization.'' \emph{Informatica} 32 (2): 283--304.
-
-\leavevmode\hypertarget{ref-lee2024model}{}%
-Lee, Andrew, Robert Parker, Sarah Poon, Daniel Gunter, Alexander
-Dowling, and Bethany Nicholson. 2024. ``Model Diagnostics for Equation
-Oriented Models: Roadblocks and the Path Forward.'' National Energy
-Technology Laboratory (NETL), Pittsburgh, PA, Morgantown, WV~\ldots.
-
-\leavevmode\hypertarget{ref-luyben1996design}{}%
-Luyben, William L. 1996. ``Design and Control Degrees of Freedom.''
-\emph{Industrial \& Engineering Chemistry Research} 35 (7): 2204--14.
-
-\leavevmode\hypertarget{ref-miller2018next}{}%
-Miller, David C, John D Siirola, Deb Agarwal, Anthony P Burgard, Andrew
-Lee, John C Eslick, Bethany Nicholson, et al. 2018. ``Next Generation
-Multi-Scale Process Systems Engineering Framework.'' In \emph{Computer
-Aided Chemical Engineering}, 44:2209--14. Elsevier.
-
-\leavevmode\hypertarget{ref-nicholson2018pyomo}{}%
-Nicholson, Bethany, John D Siirola, Jean-Paul Watson, Victor M Zavala,
-and Lorenz T Biegler. 2018. ``Pyomo. Dae: A Modeling and Automatic
-Discretization Framework for Optimization with Differential and
-Algebraic Equations.'' \emph{Mathematical Programming Computation} 10
-(2): 187--223.
-
-\leavevmode\hypertarget{ref-nilsson2008type}{}%
-Nilsson, Henrik. 2008. ``Type-Based Structural Analysis for Modular
-Systems of Equations.'' In \emph{EOOLT}, 71--81.
-
-\leavevmode\hypertarget{ref-severinsen2024digital}{}%
-Severinsen, Isaac, Wei Yu, Timothy Gordon Walmsley, and Brent Young.
-2024. ``Digital Twins in Operation: The Role of Robust Surrogate
-Modelling.'' In \emph{Computer Aided Chemical Engineering}, 53:2869--74.
-Elsevier.
-
-\leavevmode\hypertarget{ref-shacham1982equation}{}%
-Shacham, M, S Macchieto, LF Stutzman, and P Babcock. 1982. ``Equation
-Oriented Approach to Process Flowsheeting.'' \emph{Computers \& Chemical
-Engineering} 6 (2): 79--95.
-
-\leavevmode\hypertarget{ref-wagner2002iapws}{}%
-Wagner, Wolfgang, and Andreas Pruß. 2002. ``The Iapws Formulation 1995
-for the Thermodynamic Properties of Ordinary Water Substance for General
-and Scientific Use.'' \emph{Journal of Physical and Chemical Reference
-Data} 31 (2): 387--535.
-
-\leavevmode\hypertarget{ref-walmsley2024adaptive}{}%
-Walmsley, Timothy Gordon, Panos Patros, Wei Yu, Brent R Young, Stephen
-Burroughs, Mark Apperley, James K Carson, et al. 2024. ``Adaptive
-Digital Twins for Energy-Intensive Industries and Their Local
-Communities.'' \emph{Digital Chemical Engineering} 10: 100139.
-
-\leavevmode\hypertarget{ref-watertap_pressure_exchanger}{}%
-WaterTAP Documentation. 2024. ``Pressure Exchanger Model.'' 2024.
-\url{https://watertap.readthedocs.io/en/1.3.0/technical_reference/unit_models/pressure_exchanger.html}.
-\end{cslreferences}
