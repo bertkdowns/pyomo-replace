@@ -1,2 +1,9 @@
 paper.pdf
 *.pdf
+*.aux
+*.log
+*.out
+*.synctex
+*.synctex*
+*.fdb*
+*.fls

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+pandoc -f markdown+smart+raw_tex -t latex paper.md -o template/content.tex --bibliography=refs.bib \
+
+
+cd template
+
+latexmk -pdf template
