@@ -612,7 +612,7 @@ problems.
 
 \begin{figure}
 \centering
-\includegraphics{../assets/initialisation-methods.drawio.png}
+\includegraphics[width=\textwidth]{assets/initialisation-methods.drawio.png}
 \caption{Alternative initialisation routine, making use of state
 variables to avoid the need for different initialisation methods.}
 \end{figure}
@@ -743,7 +743,7 @@ include the following variables as shown in Figure \ref{compressor-dof}.
 
 \begin{figure}
 \centering
-\includegraphics{../assets/compressor-5dof.drawio.png}
+\includegraphics[width=\textwidth]{assets/compressor-5dof.drawio.png}
 \caption{Variables in a simple compressor model. \label{compressor-dof}}
 \end{figure}
 
@@ -753,7 +753,7 @@ Model (Figure \ref{compressor-sv-defined}).
 
 \begin{figure}
 \centering
-\includegraphics{../assets/compressor-sv.drawio.png}
+\includegraphics[width=\textwidth]{assets/compressor-sv.drawio.png}
 \caption{Variables in a simple compressor model, with everything that is
 not a fixed greyed out. \label{compressor-sv-defined}}
 \end{figure}
@@ -769,7 +769,7 @@ instead of the mechanical work (Figure
 
 \begin{figure}
 \centering
-\includegraphics{../assets/compressor-fixed-outlet.drawio.png}
+\includegraphics[width=\textwidth]{assets/compressor-fixed-outlet.drawio.png}
 \caption{Fully specified compressor model using a traditional approach.
 \label{compressor-fixed-traditional}}
 \end{figure}
@@ -781,7 +781,7 @@ work was replaced by (Figure \ref{compressor-replacement}).
 
 \begin{figure}
 \centering
-\includegraphics{../assets/compressor-replaced.drawio.png}
+\includegraphics[width=\textwidth]{assets/compressor-replaced.drawio.png}
 \caption{Compressor model using the variable replacement system, with
 Outlet Pressure replacing Mechanical Work.
 \label{compressor-replacement}}
@@ -839,7 +839,7 @@ are removing multiple variables and constraints simultaneously.
 
 \begin{figure}
 \centering
-\includegraphics{../assets/deleting-replacement.drawio.png}
+\includegraphics[width=\textwidth]{assets/deleting-replacement.drawio.png}
 \caption{Deleting the pump from a flowsheet is handled elegantly as the
 fixed variables are coupled to specific state variables.}
 \end{figure}
@@ -859,7 +859,7 @@ longer needs to be fixed. Thus, the model is still fully specified.
 
 \begin{figure}
 \centering
-\includegraphics{../assets/deleting-traditional.drawio.png}
+\includegraphics[width=\textwidth]{assets/deleting-traditional.drawio.png}
 \caption{Using a traditional modelling methodology, there is no coupling
 of variables, so when the pump is deleted there is no intuition what
 variables to remove.}
@@ -922,7 +922,7 @@ building equation oriented models from sets of pre-configured equations.
 
 \begin{figure}
 \centering
-\includegraphics{../assets/geothermal-replacement.drawio.png}
+\includegraphics[width=\textwidth]{assets/geothermal-replacement.drawio.png}
 \caption{Flow Diagram of a fully specified Geothermal Power Plant,
 demonstrating which state variables are being replaced.}
 \end{figure}
@@ -973,7 +973,7 @@ need to be specified.
 
 \begin{figure}
 \centering
-\includegraphics{../assets/dynamics.drawio.png}
+\includegraphics[width=\textwidth]{assets/dynamics.drawio.png}
 \caption{A model of a tank with valves controlling the inlet and the
 outlet. Properties with an asterisk (*) next to them are not
 time-indexed. The tank outlet pressure is referenced by the PID
@@ -1037,7 +1037,7 @@ Platform}\label{ahuora-digital-twin-platform}}
 
 \begin{figure}
 \centering
-\includegraphics{../assets/ahuora-interface.png}
+\includegraphics[width=\textwidth]{assets/ahuora-interface.png}
 \caption{A Heat pump in the Ahuora Platform.}
 \end{figure}
 
@@ -1064,7 +1064,7 @@ being replaced by which.
 
 \begin{figure}
 \centering
-\includegraphics{../assets/ahuora-replacement.png}
+\includegraphics[width=\textwidth]{assets/ahuora-replacement.png}
 \caption{Variable replacement on a Compressor model in the Ahuora
 Platform.}
 \end{figure}
@@ -1139,13 +1139,6 @@ large projects, such as Process Digital Twins, in the future.
 
 \hypertarget{appendix}{%
 \section{Appendix}\label{appendix}}
-
-\hypertarget{pyomo-replace-source-code}{%
-\subsection{Pyomo-Replace Source code}\label{pyomo-replace-source-code}}
-
-A sample implementation of replacement logic in Pyomo, along with the
-initialisation tests and geothermal model example, are available at
-\url{https://github.com/bertkdowns/pyomo-replace}.
 
 \hypertarget{introduction-to-pyomo-replace}{%
 \subsection{Introduction to

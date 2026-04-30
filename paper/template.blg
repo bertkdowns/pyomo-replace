@@ -2,10 +2,10 @@ This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: template.aux
 The style file: Definitions/mdpi.bst
-Database file #1: ../refs.bib
+Database file #1: refs.bib
 You've used 17 entries,
             2887 wiz_defined-function locations,
-            658 strings with 7456 characters,
+            658 strings with 7453 characters,
 and the built_in function-call counts, 7684 in all, are:
 = -- 670
 > -- 509
