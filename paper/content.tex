@@ -24,8 +24,9 @@ This results in very complex equation-oriented models (EOMs) and very
 large sets of equations.
 
 EOMs are usually specified in a declarative manner through Algebraic
-Modelling Languages (AMLs). To help models remain understandable, newer
-AMLs such as Pyomo apply software engineering principles of abstraction
+Modelling Languages (AMLs), such as GAMS \citep{robichaud2010introduction}, 
+AMPL \citep{fourer1990ampl}, Pyomo \citep{hart2011pyomo}, and JuMP \citep{lubin2023jump}. To help models remain understandable,
+AMLs apply software engineering principles of abstraction
 and encapsulation so that the entire system does not always have to be
 considered at once. This often means the person using the model does not
 directly interact with the equations behind it, making it difficult to
@@ -33,12 +34,12 @@ know what is the best way to fully define the system and specify all
 degrees of freedom. Combining multiple models, and adding additional
 constraints further complicates the issue.
 
-This article introduces a novel method to fully define an EOM. We
-propose that the model developer should explicitly define an initial set
-of variables to constrain. Then, those using the model can constrain
-other variables, but only if they choose an another variable to
-un-constrain. This method will simplify the process of squaring and
-initialising a model. Our library, pyomo-replace, demonstrates some
+This article discusses how treating equation-oriented models more like
+explicitly defined systems makes it simpler for a modeller to build,
+initialise, and reason about. We propose that the model developer should explicitly define an initial set
+of variables to constrain. As required, explicit variables can be replaced
+by other variables in the equation oriented model.
+Our library, pyomo-replace, demonstrates some
 advantages of this approach in the Pyomo and IDAES
 \citep{miller2018next} ecosystem, and the Ahuora Platform provides a
 case study of this approach in a graphical application.
@@ -50,13 +51,11 @@ case study of this approach in a graphical application.
 \subsubsection{Equation-oriented
 Modelling}\label{equation-oriented-modelling}}
 
-Fundamentally, an EOM is simply a set of mathematical equations,
-optionally with an objective function \citep{biegler2010nonlinear}.
+Fundamentally, an EOM is simply a set of mathematical equations.
 
 \[
 \begin{aligned}
-\min_{x} \quad & g(x) \\
-\text{s.t.} \quad 
+\quad 
 & \{c_i(x) = 0 : i = 1,...,m\} \\
 & x \in X.
 \end{aligned}
@@ -74,127 +73,32 @@ The main parts of these equations are:
   define the value, or solution space of, the variables. \(c_i\)
   represents a constraint expression that must equal zero for \(x\) to
   be considered a valid solution
-\item
-  \emph{Parameters}: a set of constants used in the constraints to
-  calculate the variables.
-\item
-  An \emph{Objective Function} \(g(x)\): a function that is defined in
-  terms of the variables, returns a value to minimise or maximise within
-  the space of valid solutions. In square models, the goal is an exact
-  solution so an objective function is not required, and we will
-  disregard the objective function in most of this paper.
 \end{itemize}
 
 \hypertarget{equation-oriented-modelling-frameworks}{%
 \subsubsection{Equation-oriented Modelling
 Frameworks}\label{equation-oriented-modelling-frameworks}}
 
-Variables, constraints, and objectives are fundamentally all that is
-required in a mathematical model. However, over time additional
+Variables and constraints, are fundamentally all that is
+required in a mathematical model. However, in AMLs additional
 abstractions have been developed for easier programmatic creation and
 manipulation of models, borrowing from conventional software development
-data structures.
+data structures. Typically, this is some form grouping variables and 
+constraints into a reusable component, such as blocks in Pyomo \citep{hart2011pyomo}, or
+models in GPROMS, \citep{amador2019introduction}. 
 
 Traditionally, EOMs were built in special-purpose languages, such as
 GAMS and AMPL. More recently they have moved to general-purpose
-programming languages, which have extra tooling available that allow you
-to build and initialise large EOMs programmatically
-\citep{jusevivcius2021experimental}. Some of the main modern
-equation-oriented modelling tools include JuMP, built on Julia, and
-Pyomo, built on python.
+programming languages, which make it easier to build additional tools 
+on top of the modelling language to help with model construction and
+initialisation.
 
-We will focus on Pyomo in particular here, as it was built with process
-modelling in mind and has good libraries to aid in process modelling
-\citep{hart2011pyomo}. It is a framework for building mathematical
-models that is written in Python . It includes tools to manage
-abstraction and complexity in a mathematical model, and to define
-initialisation routines and scaling factors to enhance numerical
-stability. The equation-oriented modelling framework Pyomo includes the
-following abstractions:
-
-\begin{itemize}
-\tightlist
-\item
-  Variables can be either \emph{Fixed} or \emph{Unfixed} respectively. A
-  variable \(x_i\) that is fixed to a real value \(\bar{x}_i\) adds
-  another equation \(f_i(x): x_i - \bar{x}_i\) to the set of constraint
-  expressions, so that \(x_i = \bar{x}_i\). Because pyomo makes it easy
-  to change which variables are fixed and which are unfixed, a model
-  with the same structure can be used to solve for different variables.
-\item
-  Variables and constraints of similar form be grouped together through
-  pyomo the pyomo \texttt{IndexedSet} functionality. A variable or
-  constraint is added for each item in the set. Sets are constant - you
-  can't add or remove items during solving - but they provide a
-  generalisation that makes it easy to scale up, down, or modify
-  problems for slightly different cases.\\
-\item
-  Variables can be grouped into \emph{Blocks}. Blocks can also have
-  sub-blocks inside them, making a tree data structure\footnote{Variables
-    and Blocks can be thought of like Files and Folders in a filesystem.
-    Blocks only provide structure but no information, and can be nested
-    inside each other, while variables contain the actual values in the
-    model}.
-\end{itemize}
-
-Blocks are of particular interest here. Similar to how a class in
-object-oriented programming provides encapsulation of more complex
-functionality, Blocks are used to isolate the complex internal models of
-different parts of a system. For example, in a mathematical model of a
-factory, a block may be used to model each individual unit operation (a
-pump, heater, tank, etc). The model inside the unit operation is
-isolated from the higher level model, which only cares about the
-properties of the fluid flowing in and out of the unit operation block.
-
-Pyomo also includes some even higher level modelling extensions, which
-are of particular relevance to Process Modelling:
-
-\begin{itemize}
-\tightlist
-\item
-  \emph{Pyomo.DAE} allows defining Differential Algebraic Equations
-  across ``infinite'' sets that are discretised, automatically creating
-  the necessary constraints to define derivatives and integrals
-  \citep{nicholson2018pyomo}. This is naturally useful in process
-  modelling to create 1D simulations across time, taking in to account
-  holdup, tank level, and so forth.
-\item
-  \emph{Pyomo.network} allows you to represent your model as a graph:
-  Blocks become nodes in the graph, and they can be connected to other
-  nodes via edges called ``arcs'' that define equality constraints
-  between variables \citep{bynum2021pyomo}. In many domains the graph
-  view better represents the model structure. It also allows propagating
-  initial values throughout a model. This is of particular importance as
-  it allows sharing of information between distinct blocks. In a
-  process, it is natural to use this interface to encode the connections
-  between different unit operations, so that the output material of one
-  unit operation is the input material to a successive unit operation.
-\end{itemize}
-
-Pyomo's construction techniques make it possible to create libraries of
-pre-written blocks, containing all the constraints and variables to
-model a piece of a physical system \citep{dowling2015framework}. One
-such library is IDAES-PSE. Built on top of Pyomo, it creates blocks to
-represent chemical unit operations such as compressors, heaters, tanks,
-and many more \citep{miller2018next}. It uses pyomo.DAE to represent
-time as a continuous differentiable property, and Pyomo.network to
-represent the connections between unit operations. Because the
-constraints are abstracted, the user doesn't have to think too much
-about the mathematical modelling - instead it is viewed a process
-simulation platform.
+\citep{jusevivcius2021experimental}.
 
 \hypertarget{squaring-a-model}{%
 \subsubsection{Squaring a model}\label{squaring-a-model}}
 
-In order to solve a set of equations exactly, a ``square'' model is
-required. This term is taken from linear algebra where a matrix must be
-square to be invertible. In this context, it means that there must be
-the same number of equations (constraints) as there are unknowns
-(unfixed variables), for the problem to be well posed and have an exact
-solution.
-
-The difference between the two is described as the degrees of freedom. A
-model that has more unknowns than constraints is said to have \(n\)
+A model that has more unknowns than constraints is said to have \(n\)
 degrees of freedom, where \(n_{\text{degrees\ of\ freedom}}\) is given
 by
 
@@ -202,8 +106,10 @@ by
 n_{\text{degrees\ of\ freedom}} =  n_{\text{variables}} - n_{\text{constraints}}
 \]
 
-Additionally, all the variables and equations must be linearly
-independent. When building an EOM, the user will invariably come across
+In order to solve a set of equations exactly, a ``square'' model is
+required, with zero degrees of freedom.
+
+When building an EOM, the user will invariably come across
 the problem of Degrees of Freedom; usually they will not have specified
 the model sufficiently to be able to solve for an exact solution, i.e
 \(n_{\text{degrees\ of\ freedom}} > 0\). Identifying how many and which
@@ -211,7 +117,6 @@ variables need to be ``fixed'' to make the model square can be a
 challenge \citep{luyben1996design}.
 
 There are a number of techniques to make it easier to square a model.
-
 One simple way is to include documentation about what typical fixed
 variables are; this provides a starting point for a modeller that is
 piecing together submodels developed by others. There are also automatic
@@ -220,7 +125,7 @@ structural analysis, by subtracting the number of constraints from the
 number of variables.
 
 In \citep{bunus2001debugging}, a method is proposed to help debug when a
-model is singular, by using Dulmage-Mendelson Decomposition to identify
+model is structurally singular by using Dulmage-Mendelson Decomposition to identify
 sets of constraints that are over-constrained or under-constrained.
 These methods are commonly used in frameworks such as IDAES to help
 ensure a square model is valid \citep{lee2024model}. However, while
@@ -234,16 +139,6 @@ much uptake in systems such as Pyomo. Additionally, Dulmage-Mendelson
 Decomposition provides a big list of over-constrained or
 under-constrained components, but does not provide any insight into
 which one of them should be constrained.
-
-Another technique is equation tearing, where a larger system is broken
-up into a smaller system. This tries to decompose the system into a set
-of equations that can be solved sequentially \citep{bahainv2016tearing}.
-This method is used by pyomo.network \citep{bynum2021pyomo} as an
-initialisation strategy, but can also give some insight into what is
-required to specify the model as each submodel can be considered
-independently. However, this is less effective at identifying degrees of
-freedom when the properties of the submodel are being set indirectly via
-downstream properties.
 
 Much of the research on squaring a model focuses on \emph{if} a model
 has degrees of freedom or is fully specified, and \emph{where} the model
@@ -263,15 +158,45 @@ in a plant is an easier way to understand the degrees of freedom of a
 process than by trying to analyse the number of equations and variables
 in a model that can be adjusted independently.
 
-Luyben et al.~raise an interesting link between design and control
-specification that will be explored further in this paper. By embedding
-the natural controllable properties in the model, and thinking about how
-they are controlled in a similar way to how we design control systems,
-we better bring the domain intuition into the problem of squaring a
-model.
+This is also how many sequential modular models allow a user to set something
+that the model would otherwise calculate. The simplest example of this is the 
+Goal Seek feature in Excel \citep{microsoft_goalseek_support}.
+Aspen Plus uses the Design Spec feature to allow an input to be manipulated to
+reach a target output, simulating the steady state effect of a controller \citep{aspenplus111_userguide}.
+This can be used with both sequential modular and equation-oriented models, 
+but is not required for equation-oriented models as they are implicitly defined. 
+Similar features are avaliable in other process modelling software such as gPROMS and DWSIM
+\citep{amador2019introduction} \citep{tangsriwong2020modeling}.
+
+\hypertarget{initialising-a-model}{%
+\subsubsection{Initializing a model}\label{initializing-a-model}}
+
 
 \hypertarget{method}{%
 \section{Method}\label{method}}
+
+The implicit formulation of EOMs means there is much freedom in how they are defined.
+However, the expressiveness makes it much harder to reason about the structure or 
+automate parts of model construction such as initialisation. When multiple EOMs are 
+combined using principles of abstraction, the expressiveness of
+the model compounds.
+In software systems, providing restrictions on what you can do allows you to provide guarantees about
+the behaviour of the system. 
+
+We propose that each submodel be defined in a specific way:
+
+\begin{itemize}
+  \item a set of `Standard Variables' are fixed by default, such that the submodel has zero degrees of freedom, and all other variables are defined in terms of these Standard Variables.
+  \item if a user wants to fix a variable that is not a Standard Variable, they must choose a Standard Variable to unfix, and replace it with one of the calculated variables they want to fix.
+  \item if a Standard Variable is unfixed, an initial guess must be provided for it.
+\end{itemize}
+
+In essense, we treat the EOM as if it were explicitly defined. Note that the model itself does not need to be explicitly defined,
+but in the user interface level it is treated as if it were.
+
+This leads to some helpful emergent properties that makes modelling large systems easier. 
+Degrees of freedom are no longer a problem, because the Standard Variables fully define the model, and for any variable that is fixed, a Standard Variable is unfixed, maintaining the degrees of freedom at zero.
+Initialisation becomes easier, as initialisation methods only need to be defined for the Standard Variables.
 
 In mathematical modelling, the modeller can choose what variables in a
 model you want to specify, and which ones are calculated. The model has
@@ -300,29 +225,29 @@ replaces \(y\) in an EOM.
 
 The intuition behind variable replacement is similar. There are some
 variables that it is easy to think of as fully defining the system; we
-will call them ``state variables''. They are all independent. All other
-variables can be defined in terms of these state variables\footnote{This
+will call them ``Standard Variables''. They are all independent. All other
+variables can be defined in terms of these Standard Variables\footnote{This
   is analogous to the concept of a \emph{critical set} in combinatorial
   design theory.}. In this example, the position of the accelerator
 pedal makes the most intuitive sense as the state variable, that is what
 you set to control the car's speed.
 
-It follows that if all state variables are fixed in a model, then the
+It follows that if all Standard Variables are fixed in a model, then the
 model will have zero degrees of freedom. Fixing any other variable would
 cause the system to be over-defined. Thus, similar to in control theory,
 if one wanted to specify the car's velocity, you need to be able to
 adjust the amount the accelerator pedal is depressed. This is the
 fundamental principle behind variable replacement: start with all your
-state variables defined, and then if you want to set something else, you
+Standard Variables defined, and then if you want to set something else, you
 must choose a state variable to ``replace'', or ``unfix'' in Pyomo
 language.
 
-Starting with all the state variables fixed means you never have a
+Starting with all the Standard Variables fixed means you never have a
 under-defined model. Unfixing a state variable every time you fix
 something else means you never over-define your model. This makes it
 much clearer how your model is intended to be used. Initialisation and
 scaling methods also become much simpler if guesses are provided for all
-the state variables, as you only need to define one way to
+the Standard Variables, as you only need to define one way to
 initialise/scale your model.
 
 \hypertarget{formal-definition-of-variable-replacement-methodology}{%
@@ -444,10 +369,10 @@ x \to ky - v\\
 \]
 
 As \(|\hat{x}| - |C| = 2\), we need to fix two variables to have zero
-degrees of freedom. These two variables will become our state variables,
+degrees of freedom. These two variables will become our Standard Variables,
 the ones ``fixed by default'' in the model.
 
-Choosing which variables are the state variables is an important step in
+Choosing which variables are the Standard Variables is an important step in
 the Variable Replacement Methodology. It is best to choose variables
 that are decision variables (either variables chosen during design, or
 manipulated via the control system) rather than output or dependent
@@ -457,7 +382,7 @@ In this case, \(k\) is a design variable, as it is chosen based on how
 the car is manufactured. \(y\) is a operational variable that can be
 directly manipulated at any stage. \(v\) is a dependent variable that is
 controlled via the other two. As \(k\) and \(y\) are both decision
-variables, it is appropriate they are used as the state variables.
+variables, it is appropriate they are used as the Standard Variables.
 
 If we specify \(k = 1, y = 0.2\), then we can define \(F\) as follows:
 
@@ -472,7 +397,7 @@ F :=
 This defines the initial model, which can be solved to an exact
 solution. If the modeller wants to design to a specific velocity
 \(v = 7.5\), they cannot fix this variable unless they choose something
-else to unfix. They must unfix one of the state variables, either \(k\)
+else to unfix. They must unfix one of the Standard Variables, either \(k\)
 or \(y\). For a control case, \(y\) may be replaced. Using the variable
 replacement approach, this would define an update set of fixed
 variables:
@@ -496,7 +421,7 @@ principles of variable replacement in a format as similar as possible to
 standard IDAES modelling, to make it easier to draw comparisons between
 the two approaches.
 
-Pyomo-replace contains methods to keep track of the state variables in
+Pyomo-replace contains methods to keep track of the Standard Variables in
 an IDAES model, and what variables are replacing them. The list of state
 variables and replacements can be easily printed to the screen to help
 explain the model structure.
@@ -509,7 +434,7 @@ source code, is included in the appendix.
 Equation-oriented
 Modelling}\label{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}}
 
-This method of replacing state variables to define a model does not
+This method of replacing Standard Variables to define a model does not
 fundamentally change the model itself. However, specifying a model in
 this way provides some guarantees and useful properties that traditional
 equation-oriented methods lack.
@@ -537,7 +462,7 @@ paradigm in which to reason about equation-oriented systems.
   operation becomes easier.
 \item
   It standardises initialisation routines, as long as guesses are
-  provided for state variables.
+  provided for Standard Variables.
 \item
   The coupling of variables adds a level of interpretability to the
   model, which makes it easier to maintain and manipulate models.
@@ -563,7 +488,7 @@ first recommended step to diagnose problems \citep{lee2024model}. Newer
 analysis methods, such as Dulmage-Mendelson Decomposition do make this
 simpler, but it is still an iterative process.
 
-Using a Variable Replacement approach, a set of state variables would be
+Using a Variable Replacement approach, a set of Standard Variables would be
 already defined by the model library, so the user would not need to
 square the model. There are zero degrees of freedom \emph{by
 definition}. If a problem requires a variable to be fixed that is not a
@@ -580,12 +505,12 @@ application of EOMs.
 analysis}\label{switching-between-different-types-of-analysis}}
 
 We have previously discussed using the car example that some state
-variables are design state variables (i.e \(k\)), and some are
+variables are design Standard Variables (i.e \(k\)), and some are
 manipulated variables (i.e \(y\)), and all other variables are dependent
 (i.e \(v\)).
 
 A design problem would involve finding an appropriate for the design
-state variables, by calculating a desired \(k\). In an operation case,
+Standard Variables, by calculating a desired \(k\). In an operation case,
 \(k\) is fixed and known, but an appropriate value of \(y\) may be
 required. To turn a design case into an operation case, all that is
 required is to fix all the design variables, which can be done un-doing
@@ -597,7 +522,7 @@ Likewise, a robustness test typically involves fixing only the decision
 variables (both design and operation) and calculating how sensitive the
 dependent variables are to changes. Again, this is easy to do in the
 variable replacement framework by simply undoing all replacements, as
-the decision variables are the state variables.
+the decision variables are the Standard Variables.
 
 \hypertarget{simplified-initialisation}{%
 \subsection{\texorpdfstring{Simplified Initialisation
@@ -617,11 +542,11 @@ problems.
 variables to avoid the need for different initialisation methods.}
 \end{figure}
 
-The concept of ``State Variables'' can simplify this process, by
+The concept of ``Standard Variables'' can simplify this process, by
 splitting the initialisation into two parts. First, the initialisation
 methods can calculate initial values of all variables based on the
-values or guesses of the state variables. Then, once the model has been
-initialised in a sensible location, any state variables that are
+values or guesses of the Standard Variables. Then, once the model has been
+initialised in a sensible location, any Standard Variables that are
 replaced (i.e, were guesses) can be unfixed, and the variables that are
 replacing them can be fixed back to their original values. The block can
 then be re-solved to calculate the correct value of any ``guessed''
@@ -629,7 +554,7 @@ state variable.
 
 This limits the logic in initialisation routines, as only one
 initialisation method is required be required. It does require that
-initial guesses are provided for all the state variables, but this is a
+initial guesses are provided for all the Standard Variables, but this is a
 reasonable tradeoff. This standardises the initialisation process to
 work across all sets of fixed variables, while still giving the model
 library developer freedom to develop whatever initialisation method they
@@ -748,7 +673,7 @@ include the following variables as shown in Figure \ref{compressor-dof}.
 \end{figure}
 
 The equivalent model, using a variable replacement approach, would have
-state variables already defined by the developer of the Compressor Unit
+Standard Variables already defined by the developer of the Compressor Unit
 Model (Figure \ref{compressor-sv-defined}).
 
 \begin{figure}
@@ -841,11 +766,11 @@ are removing multiple variables and constraints simultaneously.
 \centering
 \includegraphics[width=\textwidth]{assets/deleting-replacement.drawio.png}
 \caption{Deleting the pump from a flowsheet is handled elegantly as the
-fixed variables are coupled to specific state variables.}
+fixed variables are coupled to specific Standard Variables.}
 \end{figure}
 
 Consider this model of a pump connected to a heater, with all the state
-variables defined. The inlet conditions are state variables, and so is
+variables defined. The inlet conditions are Standard Variables, and so is
 the mechanical work of the pump, and the heat duty of the heater.
 However, the mechanical work and heat duty are replaced by the
 temperature and pressure of the outlet; i.e the temperature and pressure
@@ -887,7 +812,7 @@ on what variables to remove. There are two options:
 
 Both of these options require manual intervention from the modeller, as
 there is no clear path to maintain a solvable model. In comparison, when
-fixed variables are coupled to a set of state variables, it is easy to
+fixed variables are coupled to a set of Standard Variables, it is easy to
 see when to unfix the variable: when the state var it is connected to is
 removed.
 
@@ -924,7 +849,7 @@ building equation oriented models from sets of pre-configured equations.
 \centering
 \includegraphics[width=\textwidth]{assets/geothermal-replacement.drawio.png}
 \caption{Flow Diagram of a fully specified Geothermal Power Plant,
-demonstrating which state variables are being replaced.}
+demonstrating which Standard Variables are being replaced.}
 \end{figure}
 
 A model of a geothermal plant, outlined in \citep{severinsen2024digital}
@@ -987,7 +912,7 @@ and outlet valve controlling the flow rate in and out of the tank. The
 flow into the tank is controlled by a PID controller, which is targeting
 a certain outlet pressure within the tank.
 
-Both the valves have two state variables: the valve coefficient, and the
+Both the valves have two Standard Variables: the valve coefficient, and the
 valve opening fraction. However, the valve coefficient is a constant
 property; it cannot be changed throughout the simulation. To indicate
 this, we have included an asterisk (*) next to them. In contrast, the
@@ -1021,7 +946,7 @@ opening fraction. This is a simple solution that can be done when the
 PID controller is connected up to the valve opening fraction.
 
 Initial Material Accumulation and Initial Energy Accumulation can be
-treated as additional state variables if it is appropriate. It would be
+treated as additional Standard Variables if it is appropriate. It would be
 feasible to use the replacement logic to replace them with Initial
 Material Holdup and Initial Energy Holdup. However, typically dynamic
 flowsheets start with a steady-state assumption, and all accumulation
@@ -1050,7 +975,7 @@ The Ahuora Digital Twin Platform is a web-based process simulation
 environment. It is built using IDAES and Pyomo as the equation-oriented
 modelling libraries as the simulation backend.
 
-Each unit operation has a set of state variables, where the user can
+Each unit operation has a set of Standard Variables, where the user can
 enter a value, and a set of calculated variables, which cannot be
 entered by the user. If a user wants to fix a calculated variable, an
 appropriate state variable has to be chosen and ``replaced''. This makes
@@ -1087,15 +1012,15 @@ user with any direction on how to get started.
 One of the major advantages of Variable Replacement that we have noticed
 in a GUI is that it provides additional context for unit operations. In
 a GUI program, it is very easily to visually show that context by
-styling fixed State Variables, guesses, and calculated variables
+styling fixed Standard Variables, guesses, and calculated variables
 differently, and to show the links between variables.
 
 Working with a GUI also means that adding and removing unit operations
 is common, and Variable Replacement provides a sensible way to deal with
 adding or removing unit operations. When a unit operation is added, it's
-state variables and inlet ports are fixed by default to ensure the
+Standard Variables and inlet ports are fixed by default to ensure the
 degrees of freedom are still zero. When a unit operation is removed,
-anything that is replacing it's state variables is also unfixed, and any
+anything that is replacing it's Standard Variables is also unfixed, and any
 inlet ports that were previously connected to the outlet of the unit
 operation are fixed, again keeping the degrees of freedom at zero.
 
@@ -1104,7 +1029,7 @@ routines, because these are usually specified as python code and can be
 quite complex, so it is out of scope of the project. However, the
 multi-stage initialisation that naturally works with variable
 replacement helps to improve the reliability of solving. As guesses are
-specified for the state variables, these can be used in the
+specified for the Standard Variables, these can be used in the
 initialisation routine. In particular, this enables us to specify any
 set of variables to define the conditions of an inlet stream, whereas
 IDAES does not have initialisation routines for any set of state
@@ -1117,19 +1042,19 @@ Variable replacement provides an alternative way of maintaining a square
 model in an equation-oriented framework, particularly when scaling up to
 larger EOMs.
 
-If state variables are defined on each block added to a model, those who
+If Standard Variables are defined on each block added to a model, those who
 use the model do not need to first square the problem. Degrees of
 freedom are kept at zero through any changes that are made to the
-flowsheet. The coupling between state variables and fixed variables
+flowsheet. The coupling between Standard Variables and fixed variables
 provides a more interpretable way of reasoning about the model, bringing
 the relationships between variables to the forefront. Additionally, a
-set of state variables and initial guesses for them makes it simpler to
+set of Standard Variables and initial guesses for them makes it simpler to
 build initialisation and scaling methods. The Ahuora Digital Twin
 Platform provides a case study on how this is beneficial, particularly
 when using a GUI tool for modelling.
 
 While this paper introduces Variable Replacement as a method and purview
-it's potential benefits, further research is required to systematically
+its potential benefits, further research is required to systematically
 evaluate the interpretability and initialisation advantages across
 different types of EOMs. Nonetheless, these techniques hold promise to
 standardise the creation and use of libraries of EOMs. This would enable
@@ -1144,9 +1069,9 @@ large projects, such as Process Digital Twins, in the future.
 \subsection{Introduction to
 Pyomo-replace}\label{introduction-to-pyomo-replace}}
 
-Pyomo-replace is a simple library to keep track of the state variables
+Pyomo-replace is a simple library to keep track of the Standard Variables
 in an IDAES model, and what variables are replacing them. The list of
-state variables and replacements can be easily printed to the screen to
+Standard Variables and replacements can be easily printed to the screen to
 help explain the model structure.
 
 In Pyomo, an EOM is specified as a set of Blocks, with each block
@@ -1170,21 +1095,21 @@ Pyomo-replace is specifically targeted to representing these types of
 EOMs.
 
 \hypertarget{state-variables}{%
-\subsubsection{State Variables}\label{state-variables}}
+\subsubsection{Standard Variables}\label{state-variables}}
 
 Because each block contains a set of variables and constraints, it can
 be considered an independent system of equations and solved
 independently if the appropriate number of variables are fixed to make
 the problem square. We call the initial set of fixed variables the
-``\emph{State Variables}''.
+``\emph{Standard Variables}''.
 
-The state variables are chosen by first fixing all inlet variables. By
+The Standard Variables are chosen by first fixing all inlet variables. By
 convention, all inlet variables are automatically considered state
 variables, if and only if the inlet is not connected to an outlet. Then,
 additional variables are fixed in the model until the model is square.
-These variables are also considered state variables.
+These variables are also considered Standard Variables.
 
-Typically, the set of state variables would be defined by the author of
+Typically, the set of Standard Variables would be defined by the author of
 the block. As Blocks are an abstraction designed to be reused, this
 could be the developer of a library of modelling components, rather than
 the modeller of a specific flowsheet.
@@ -1193,7 +1118,7 @@ the modeller of a specific flowsheet.
 \subsubsection{Building a model}\label{building-a-model}}
 
 In IDAES, a model is built from a number of blocks. By default, all
-state variables are fixed, and all unconnected inlets are fixed, and so
+Standard Variables are fixed, and all unconnected inlets are fixed, and so
 there will be no degrees of freedom. This fully specifies the model, as
 all operations are fully defined: either explicitly, or based on the
 outlet conditions of other operations.
@@ -1202,7 +1127,7 @@ outlet conditions of other operations.
 \subsubsection{Replacing Variables.}\label{replacing-variables.}}
 
 Once a model is built, different variables can be fixed instead of the
-state variables. For this to happen, a couple of conditions need to be
+Standard Variables. For this to happen, a couple of conditions need to be
 met:
 
 \begin{itemize}
@@ -1223,7 +1148,7 @@ met:
   freedom.
 \end{itemize}
 
-Metadata about which variables are replacing which state variables is
+Metadata about which variables are replacing which Standard Variables is
 stored. If a variable is ever unfixed, the state variable it replaced
 must be fixed again.
 
@@ -1266,14 +1191,14 @@ These lines:
 \end{itemize}
 
 The \texttt{SVCompressor} unit model is an extension of the IDAES
-\texttt{Compressor} unit model that defines the state variables that
+\texttt{Compressor} unit model that defines the Standard Variables that
 should be used by \texttt{pyomo-replace}.
 
 For simplicity we will focus on only one unit operation, because it is
 sufficient to show all the functionality of pyomo-replace. The methods
 are the same for flowsheets with more unit models. Once the unit models
 have been added to the flowsheet and connected up, pyomo-replace
-requires that all inlet ports are registered as state variables:
+requires that all inlet ports are registered as Standard Variables:
 
 \begin{verbatim}
 > register_inlet_ports(m.fs)
@@ -1285,19 +1210,19 @@ have been fully defined and any connections between unit operations have
 been made. Once this method is called, the model should have zero
 degrees of freedom.
 
-Now we can view all the state variables:
+Now we can view all the Standard Variables:
 
 \begin{verbatim}
 > pprint_replacements(m.fs)
 \end{verbatim}
 
-This prints a list of all state variables, and any that are being
+This prints a list of all Standard Variables, and any that are being
 replaced by other variables. As we have not yet replaced any state
 variables, it would simply print a list of all the variables that we
 need to either set a value for, or replace:
 
 \begin{verbatim}
-Unreplaced state variables:
+Unreplaced Standard Variables:
  fs.compressor.work_mechanical
  fs.compressor.efficiency_isentropic
  fs.compressor.inlet.flow_mol
@@ -1319,11 +1244,11 @@ Now we can run \texttt{pprint\_replacements} again, to show that
 \begin{verbatim}
 > pprint_replacements(m.fs)
 
-Replaced state variables:
+Replaced Standard Variables:
   (Fixed Variable) -> (Replaced State Variable)
   fs.h1.outlet.pressure -> fs.compressor.work_mechanical
 
-Unreplaced state variables in block fs:
+Unreplaced Standard Variables in block fs:
   fs.compressor.efficiency_isentropic
   fs.compressor.inlet.flow_mol
   fs.compressor.inlet.enth_mol
@@ -1331,7 +1256,7 @@ Unreplaced state variables in block fs:
 \end{verbatim}
 
 You can then set a value for \texttt{outlet.pressure} and all the other
-state variables, and provide a guess for \texttt{ratioP}. This model can
+Standard Variables, and provide a guess for \texttt{ratioP}. This model can
 then be initialized and solved using the standard pyomo and idaes
 libraries.
 
@@ -1372,7 +1297,7 @@ constraints removed is equal to the number of constraints added.
 Properties}\label{calculating-inlet-properties}}
 
 Inlets that are not connected to anything upstream are considered to be
-state variables. They can be replaced by other variables. This is
+Standard Variables. They can be replaced by other variables. This is
 generally fine, but some models are built with the expectation that
 inlet conditions are calculated. For example, the pressure exchanger
 model at \citep{watertap_pressure_exchanger} expects that the inlet flow
@@ -1414,8 +1339,8 @@ variable replacement methodology: variable replacement could be used to
 fully define the model for an initial solve. Then a set of additional
 variables can be unfixed and the optimisation algorithm can be run.
 
-Additionally, knowing the list of state variables may still provide good
-context for optimisation, as any state variables you unfix are the ones
+Additionally, knowing the list of Standard Variables may still provide good
+context for optimisation, as any Standard Variables you unfix are the ones
 for which you are calculating an optimum value.
 
 \newpage

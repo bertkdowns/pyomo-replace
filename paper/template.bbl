@@ -14,6 +14,30 @@ Shacham, M.; Macchieto, S.; Stutzman, L.; Babcock, P.
 \newblock Equation oriented approach to process flowsheeting.
 \newblock {\em Computers \& Chemical Engineering} {\bf 1982}, {\em 6},~79--95.
 
+\bibitem[Robichaud(2010)]{robichaud2010introduction}
+Robichaud, V.
+\newblock An introduction to GAMS.
+\newblock {\em Matrix} {\bf 2010}, pp. 1--14.
+
+\bibitem[Fourer et~al.(1990)Fourer, Gay, and Kernighan]{fourer1990ampl}
+Fourer, R.; Gay, D.M.; Kernighan, B.W.
+\newblock AMPL: A mathematical programming language.
+\newblock {\em Management Science} {\bf 1990}, {\em 36},~519--554.
+
+\bibitem[Hart et~al.(2011)Hart, Watson, and Woodruff]{hart2011pyomo}
+Hart, W.E.; Watson, J.P.; Woodruff, D.L.
+\newblock Pyomo: modeling and solving mathematical programs in Python.
+\newblock {\em Mathematical Programming Computation} {\bf 2011}, {\em
+  3},~219--260.
+
+\bibitem[Lubin et~al.(2023)Lubin, Dowson, Garcia, Huchette, Legat, and
+  Vielma]{lubin2023jump}
+Lubin, M.; Dowson, O.; Garcia, J.D.; Huchette, J.; Legat, B.; Vielma, J.P.
+\newblock JuMP 1.0: Recent improvements to a modeling language for mathematical
+  optimization.
+\newblock {\em Mathematical Programming Computation} {\bf 2023}, {\em
+  15},~581--589.
+
 \bibitem[Miller et~al.(2018)Miller, Siirola, Agarwal, Burgard, Lee, Eslick,
   Nicholson, Laird, Biegler, Bhattacharyya, et~al.]{miller2018next}
 Miller, D.C.; Siirola, J.D.; Agarwal, D.; Burgard, A.P.; Lee, A.; Eslick, J.C.;
@@ -22,10 +46,12 @@ Miller, D.C.; Siirola, J.D.; Agarwal, D.; Burgard, A.P.; Lee, A.; Eslick, J.C.;
   {\em Computer Aided Chemical Engineering}; Elsevier,  2018; Vol.~44, pp.
   2209--2214.
 
-\bibitem[Biegler(2010)]{biegler2010nonlinear}
-Biegler, L.T.
-\newblock {\em Nonlinear programming: concepts, algorithms, and applications to
-  chemical processes}; SIAM,  2010.
+\bibitem[Amador et~al.(2019)Amador, Mart{\'\i}n, and
+  Bueno]{amador2019introduction}
+Amador, C.; Mart{\'\i}n, M.; Bueno, L.
+\newblock Introduction to gPROMS{\textregistered} for Chemical Engineering. In
+  {\em Introduction to Software for Chemical Engineers, Second Edition}; CRC
+  Press,  2019; pp. 373--460.
 
 \bibitem[Jusevi{\v{c}}ius et~al.(2021)Jusevi{\v{c}}ius, Oberdieck, and
   Paulavi{\v{c}}ius]{jusevivcius2021experimental}
@@ -33,32 +59,6 @@ Jusevi{\v{c}}ius, V.; Oberdieck, R.; Paulavi{\v{c}}ius, R.
 \newblock Experimental analysis of algebraic modelling languages for
   mathematical optimization.
 \newblock {\em Informatica} {\bf 2021}, {\em 32},~283--304.
-
-\bibitem[Hart et~al.(2011)Hart, Watson, and Woodruff]{hart2011pyomo}
-Hart, W.E.; Watson, J.P.; Woodruff, D.L.
-\newblock Pyomo: modeling and solving mathematical programs in Python.
-\newblock {\em Mathematical Programming Computation} {\bf 2011}, {\em
-  3},~219--260.
-
-\bibitem[Nicholson et~al.(2018)Nicholson, Siirola, Watson, Zavala, and
-  Biegler]{nicholson2018pyomo}
-Nicholson, B.; Siirola, J.D.; Watson, J.P.; Zavala, V.M.; Biegler, L.T.
-\newblock pyomo. dae: A modeling and automatic discretization framework for
-  optimization with differential and algebraic equations.
-\newblock {\em Mathematical Programming Computation} {\bf 2018}, {\em
-  10},~187--223.
-
-\bibitem[Bynum et~al.(2021)Bynum, Hackebeil, Hart, Laird, Nicholson, Siirola,
-  Watson, Woodruff, et~al.]{bynum2021pyomo}
-Bynum, M.L.; Hackebeil, G.A.; Hart, W.E.; Laird, C.D.; Nicholson, B.L.;
-  Siirola, J.D.; Watson, J.P.; Woodruff, D.L.;  et~al.
-\newblock {\em Pyomo-optimization modeling in python}; Springer,  2021.
-
-\bibitem[Dowling and Biegler(2015)]{dowling2015framework}
-Dowling, A.W.; Biegler, L.T.
-\newblock A framework for efficient large scale equation-oriented flowsheet
-  optimization.
-\newblock {\em Computers \& Chemical Engineering} {\bf 2015}, {\em 72},~3--20.
 
 \bibitem[Luyben(1996)]{luyben1996design}
 Luyben, W.L.
@@ -85,10 +85,27 @@ Nilsson, H.
 \newblock Type-Based Structural Analysis for Modular Systems of Equations.
 \newblock In Proceedings of the EOOLT,  2008, pp. 71--81.
 
-\bibitem[Bahainv et~al.(2016)Bahainv, Schichl, and
-  Neumaier]{bahainv2016tearing}
-Bahainv, A.; Schichl, H.; Neumaier, A.
-\newblock Tearing systems of nonlinear equations. I. A survey,  2016.
+\bibitem[{Microsoft}(n.d.)]{microsoft_goalseek_support}
+{Microsoft}.
+\newblock Use Goal Seek to find the result you want by adjusting an input
+  value,  n.d.
+\newblock Microsoft Support article for Excel What-If Analysis (Goal Seek).
+  Accessed: 2026-05-01.
+
+\bibitem[{Aspen Technology, Inc.}(2001)]{aspenplus111_userguide}
+{Aspen Technology, Inc.}.
+\newblock {\em Aspen Plus 11.1 User Guide}.
+\newblock Aspen Technology, Inc.,  2001.
+\newblock Part Number: Aspen Plus\textregistered\ 11.1.
+
+\bibitem[Tangsriwong et~al.(2020)Tangsriwong, Lapchit, Kittijungjit,
+  Klamrassamee, Sukjai, and Laoonual]{tangsriwong2020modeling}
+Tangsriwong, K.; Lapchit, P.; Kittijungjit, T.; Klamrassamee, T.; Sukjai, Y.;
+  Laoonual, Y.
+\newblock Modeling of chemical processes using commercial and open-source
+  software: A comparison between Aspen Plus and DWSIM.
+\newblock In Proceedings of the IOP Conference Series: Earth and Environmental
+  Science. IOP Publishing,  2020, Vol. 463, p. 012057.
 
 \bibitem[Severinsen et~al.(2024)Severinsen, Yu, Walmsley, and
   Young]{severinsen2024digital}
