@@ -83,9 +83,9 @@ Variables and constraints, are fundamentally all that is
 required in a mathematical model. However, in AMLs additional
 abstractions have been developed for easier programmatic creation and
 manipulation of models, borrowing from conventional software development
-data structures. Typically, this is some form grouping variables and 
-constraints into a reusable component, such as blocks in Pyomo \citep{hart2011pyomo}, or
-models in GPROMS, \citep{amador2019introduction}. 
+data structures. A common method is to group variables and 
+constraints into a reusable component. This is called a \textit{block} in Pyomo \citep{hart2011pyomo}, or a 
+\textit{model} in GPROMS \citep{amador2019introduction}. 
 
 Traditionally, EOMs were built in special-purpose languages, such as
 GAMS and AMPL. More recently they have moved to general-purpose
@@ -171,6 +171,17 @@ Similar features are avaliable in other process modelling software such as gPROM
 \hypertarget{initialising-a-model}{%
 \subsubsection{Initializing a model}\label{initializing-a-model}}
 
+Because of the non-linear nature of many EOMs, providing a good initial guess
+is often required to find a sensible solution. There are many methods for this,
+including warm starts from a previous solution, linear or simplified approximations,
+solving initially at a simpler point, or structural decomposition \citep{SAFDARNEJAD201539}.
+
+The exact method often depends on the model structure. The IDAES process modelling framework
+defines a seperate initialisation routine for each unit model that is added \citep{lee2021idaes}. However, as there
+are so many different ways of fully specifying a unit model, these initialisation methods quickly become complicated
+as they try to handle many different cases. Even so, if a user chooses to fully specify 
+the model in a way that the initialisation method does not expect, it may fail.
+
 
 \hypertarget{method}{%
 \section{Method}\label{method}}
@@ -197,58 +208,6 @@ but in the user interface level it is treated as if it were.
 This leads to some helpful emergent properties that makes modelling large systems easier. 
 Degrees of freedom are no longer a problem, because the Standard Variables fully define the model, and for any variable that is fixed, a Standard Variable is unfixed, maintaining the degrees of freedom at zero.
 Initialisation becomes easier, as initialisation methods only need to be defined for the Standard Variables.
-
-In mathematical modelling, the modeller can choose what variables in a
-model you want to specify, and which ones are calculated. The model has
-complete freedom, so long as the final model is square with zero degrees
-of freedom.
-
-In the physical world, there are some things that can be adjusted, and
-some that simply follow as a natural consequence. The closest thing to
-``fixing'' a property, or holding a property constant, is control
-theory. Let us consider a very simple model of a car's velocity:
-
-\[
-v = ky
-\]
-
-That is, the velocity \(v\) of a car on flat ground is equal to some
-known performance constant \(k\) multiplied by the amount the
-accelerator pedal is depressed, \(y\). If the accelerator is depressed
-further, the final velocity of the car will increase. This can easily be
-modelled in an AML, where fixing \(v\) or \(y\) results in a fully
-defined system. In the physical world, the velocity of the car cannot be
-set directly; rather, the manipulated variable must be the position of
-the accelerator pedal. \(x\). From a control theory perspective, \(v\)
-is the controlled variable, which has a fixed set point and effectively
-replaces \(y\) in an EOM.
-
-The intuition behind variable replacement is similar. There are some
-variables that it is easy to think of as fully defining the system; we
-will call them ``Standard Variables''. They are all independent. All other
-variables can be defined in terms of these Standard Variables\footnote{This
-  is analogous to the concept of a \emph{critical set} in combinatorial
-  design theory.}. In this example, the position of the accelerator
-pedal makes the most intuitive sense as the state variable, that is what
-you set to control the car's speed.
-
-It follows that if all Standard Variables are fixed in a model, then the
-model will have zero degrees of freedom. Fixing any other variable would
-cause the system to be over-defined. Thus, similar to in control theory,
-if one wanted to specify the car's velocity, you need to be able to
-adjust the amount the accelerator pedal is depressed. This is the
-fundamental principle behind variable replacement: start with all your
-Standard Variables defined, and then if you want to set something else, you
-must choose a state variable to ``replace'', or ``unfix'' in Pyomo
-language.
-
-Starting with all the Standard Variables fixed means you never have a
-under-defined model. Unfixing a state variable every time you fix
-something else means you never over-define your model. This makes it
-much clearer how your model is intended to be used. Initialisation and
-scaling methods also become much simpler if guesses are provided for all
-the Standard Variables, as you only need to define one way to
-initialise/scale your model.
 
 \hypertarget{formal-definition-of-variable-replacement-methodology}{%
 \subsection{Formal Definition of Variable Replacement
@@ -338,96 +297,320 @@ and a new model
 
 that maintains the condition that \(DoF(\mathcal{M}_{new}) = 0\).
 
-\hypertarget{an-example}{%
-\subsubsection{An example}\label{an-example}}
+\hypertarget{repeated-replacement}{%
+\subsubsection{Repeated Replacement}\label{repeated-replacement}}
 
-Returning to the model of a car acceleration:
+As the result of a replacement is still an EOM, the process can be repeated. Each time it is repeated, \(\mathcal{F}_{i}\) is updated to \(\mathcal{F}_{i+1}\).  This gradually replaces the original set of fixed variables (\(\mathcal{F}\), also called the Standard Variables) with a new set of fixed variables (\(\mathcal{F}_{replaced}\)). 
 
-\[
-v = ky
-\]
+\hypertarget{initialisation-of-repeated-replacement}{%
+\subsubsection{Initialisation of Models}\label{initialisation-of-repeated-replacement}}
 
-We can define a vector of variables \(x\):
+Initalisation methods can be written to calculate initial values for all variables based on the initial set of fixed variables (\(\mathcal{F}\)). After the initialisation method is run, the model can be solved with the new set of fixed variables (\(\mathcal{F}_{replaced}\)) to calculate the correct values of any variables that were originally fixed. This allows the same initialisation method to be used regardless of which variables are fixed as long as an initial guess is provided for the Standard Variables.
 
-\[
-\hat{x} :=
-\begin{pmatrix}
-v \\
-k \\
-y \\
-\end{pmatrix}
-\]
-
-And the equations can be rearranged into a functional form where C(x) =
-0:
-
-\[
-C :=
-\begin{Bmatrix}
-x \to ky - v\\
-\end{Bmatrix}
-\]
-
-As \(|\hat{x}| - |C| = 2\), we need to fix two variables to have zero
-degrees of freedom. These two variables will become our Standard Variables,
-the ones ``fixed by default'' in the model.
-
-Choosing which variables are the Standard Variables is an important step in
-the Variable Replacement Methodology. It is best to choose variables
-that are decision variables (either variables chosen during design, or
-manipulated via the control system) rather than output or dependent
-variables.
-
-In this case, \(k\) is a design variable, as it is chosen based on how
-the car is manufactured. \(y\) is a operational variable that can be
-directly manipulated at any stage. \(v\) is a dependent variable that is
-controlled via the other two. As \(k\) and \(y\) are both decision
-variables, it is appropriate they are used as the Standard Variables.
-
-If we specify \(k = 1, y = 0.2\), then we can define \(F\) as follows:
-
-\[
-F :=
-\begin{Bmatrix}
-\hat{x} \to k - 1 \\
-\hat{x} \to y - 0.2  \\
-\end{Bmatrix}
-\]
-
-This defines the initial model, which can be solved to an exact
-solution. If the modeller wants to design to a specific velocity
-\(v = 7.5\), they cannot fix this variable unless they choose something
-else to unfix. They must unfix one of the Standard Variables, either \(k\)
-or \(y\). For a control case, \(y\) may be replaced. Using the variable
-replacement approach, this would define an update set of fixed
-variables:
-
-\[
-F' :=
-\begin{Bmatrix}
-\hat{x} \to k - 1 \\
-\hat{x} \to v - 7.5  \\
-\end{Bmatrix}
-\]
-
-\hypertarget{a-reference-implementation-pyomo-replace}{%
-\subsection{A reference implementation:
-pyomo-replace}\label{a-reference-implementation-pyomo-replace}}
+\hypertarget{introduction-to-pyomo-replace}{%
+\subsection{
+Pyomo-replace: A Library for Variable Replacement in Equation-Oriented Models}\label{introduction-to-pyomo-replace}}
 
 To aid in evaluating the advantages of a variable replacement approach
 to equation-oriented modelling, we have created a small python package
-built on IDAES and pyomo, called pyomo-replace. It demonstrates the
-principles of variable replacement in a format as similar as possible to
-standard IDAES modelling, to make it easier to draw comparisons between
-the two approaches.
+built on IDAES and pyomo, called pyomo-replace. It keeps track of the Standard Variables
+in an IDAES model, and what variables are replacing them. The list of
+Standard Variables and replacements can be easily printed to the screen to
+help explain the model structure.
 
-Pyomo-replace contains methods to keep track of the Standard Variables in
-an IDAES model, and what variables are replacing them. The list of state
-variables and replacements can be easily printed to the screen to help
-explain the model structure.
+In Pyomo, an EOM is specified as a set of Blocks, with each block
+containing variables and constraints between variables. A Block may
+contain Ports, which provide a method of connecting Blocks together.
 
-A full explanation of the pyomo-replace library, including a link to the
-source code, is included in the appendix.
+A Port is simply a collection of variables on a block. A port is
+specified to be either an Inlet Port or an Outlet Port. An Inlet port
+may be connected to an Outlet port containing an equivalent collection
+of variables. The inlet and outlet port do not need to be on the same
+block. Connecting two ports creates an equality constraint between the
+variable on the Outlet and the variable on the Inlet, that is, the
+variable on the inlet is defined to be equal to the corresponding
+variable on the outlet port.
+
+The IDAES framework makes it easy to model chemical engineering problems
+in pyomo. An equation-oriented model typically represents a chemical
+flowsheet, a Block typically represents a unit operation, and Inlet and
+Outlet Ports represent inlets and outlets of a unit operation.
+Pyomo-replace is specifically targeted to representing these types of
+EOMs.
+
+\hypertarget{state-variables}{%
+\subsubsection{Standard Variables}\label{state-variables}}
+
+Because each block contains a set of variables and constraints, it can
+be considered an independent system of equations.
+Thus, each block has its own set of Standard Variables that are fixed by default to make it a square model.
+
+The Standard Variables are chosen by first fixing all inlet variables. By
+convention, all inlet variables are automatically considered state
+variables, if and only if the inlet is not connected to an outlet. Then,
+additional variables are fixed in the model until the model is square.
+These variables are also considered Standard Variables.
+
+The set of Standard Variables is defined by the author of
+the block. This means that if a user imports a block from an external library,
+it comes with a predefined set of Standard Variables and initialisation methods that work with them.
+This provides a form of self-documentation and makes it easier to use
+external models.
+
+\hypertarget{building-a-model}{%
+\subsubsection{Building a model}\label{building-a-model}}
+
+In IDAES, a model is built from a number of blocks. By default, all
+Standard Variables are fixed, and all unconnected inlets are fixed, and so
+there will be no degrees of freedom. This fully specifies the model, as
+all operations are fully defined: either explicitly, or based on the
+outlet conditions of other operations.
+
+\hypertarget{replacing-variables.}{%
+\subsubsection{Replacing Variables.}\label{replacing-variables.}}
+
+Once a model is built, different variables can be fixed instead of the
+Standard Variables. For this to happen, a couple of conditions need to be
+met:
+
+\begin{itemize}
+\tightlist
+\item
+  A variable must be chosen (that is not already fixed) and fixed. As
+  the model was previously fully defined, this will make the model
+  over-defined, with -1 degrees of freedom.
+\item
+  To prevent the model becoming over-defined, a state variable must be
+  chosen and unfixed. We say this state variable has been ``replaced''
+  with the new variable.
+\item
+  The state variable must be chosen such that all equations in the model
+  are not structurally singular. This can be done by choosing a state
+  variable that is part of the Dulmage-Mendelson Over-constrained set 
+  when the new variable was fixed \citep{lee2024model}.
+\end{itemize}
+
+Metadata about which variables are replacing which Standard Variables is
+stored, for initialisation and interpretation purposes.
+If a variable is ever unfixed, the state variable it replaced
+must be fixed again.
+
+
+\hypertarget{an-example-in-idaes.}{%
+\subsubsection{An example in IDAES.}\label{an-example-in-idaes.}}
+
+To show how pyomo-replace demonstrates the replacement logic, we will
+consider a simple example of a heater, where the inlet properties are
+specified and the outlet temperature is specified, and the heat duty is
+calculated from the outlet temperature.
+
+First we must define the basic structure:
+
+\begin{verbatim}
+> m = pyo.ConcreteModel()
+> m.fs = FlowsheetBlock(dynamic=False)
+> m.fs.pp = iapws95.Iapws95ParameterBlock()
+> m.fs.compressor = SVCompressor(property_package=m.fs.pp)
+\end{verbatim}
+
+These lines:
+
+\begin{itemize}
+\tightlist
+\item
+  Create a new EOM in the Pyomo Framework
+\item
+  Add a IDAES Flowsheet into the EOM (This always required when building
+  models with IDAES)
+\item
+  Specify the fluid property package to model water, using the IAPWS95
+  specification \citep{wagner2002iapws}
+\item
+  Add a Compressor unit operation to the flowsheet, using the IAPWS95
+  property package to model the properties of the water.
+\end{itemize}
+
+The \texttt{SVCompressor} unit model is an extension of the IDAES
+\texttt{Compressor} unit model that defines the Standard Variables that
+should be used by \texttt{pyomo-replace}.
+
+For simplicity we will focus on only one unit operation, because it is
+sufficient to show all the functionality of pyomo-replace. The methods
+are the same for flowsheets with more unit models. Once the unit models
+have been added to the flowsheet and connected up, pyomo-replace
+requires that all inlet ports are registered as Standard Variables:
+
+\begin{verbatim}
+> register_inlet_ports(m.fs)
+\end{verbatim}
+
+This registers the properties of all inlet ports that do not have
+another model upstream as state vars. This is done after the unit models
+have been fully defined and any connections between unit operations have
+been made. Once this method is called, the model should have zero
+degrees of freedom.
+
+Now we can view all the Standard Variables:
+
+\begin{verbatim}
+> pprint_replacements(m.fs)
+\end{verbatim}
+
+This prints a list of all Standard Variables, and any that are being
+replaced by other variables. As we have not yet replaced any state
+variables, it would simply print a list of all the variables that we
+need to either set a value for, or replace:
+
+\begin{verbatim}
+Unreplaced Standard Variables:
+ fs.compressor.work_mechanical
+ fs.compressor.efficiency_isentropic
+ fs.compressor.inlet.flow_mol
+ fs.compressor.inlet.enth_mol
+ fs.compressor.inlet.pressure
+\end{verbatim}
+
+However, we wanted to specify the outlet pressure instead of the
+compressor Replacing a variable is as simple as calling a function,
+passing the new variable to fix and the state variable to unfix:
+
+\begin{verbatim}
+> replace_state_var(m.fs.compressor.ratioP, m.fs.heater.outlet.pressure)
+\end{verbatim}
+
+Now we can run \texttt{pprint\_replacements} again, to show that
+\texttt{work\_mechanical} has been replaced by \texttt{outlet.pressure}.
+
+\begin{verbatim}
+> pprint_replacements(m.fs)
+
+Replaced Standard Variables:
+  (Fixed Variable) -> (Replaced State Variable)
+  fs.h1.outlet.pressure -> fs.compressor.work_mechanical
+
+Unreplaced Standard Variables in block fs:
+  fs.compressor.efficiency_isentropic
+  fs.compressor.inlet.flow_mol
+  fs.compressor.inlet.enth_mol
+  fs.compressor.inlet.pressure
+\end{verbatim}
+
+You can then set a value for \texttt{outlet.pressure} and all the other
+Standard Variables, and provide a guess for \texttt{ratioP}. This model can
+then be initialized and solved using the standard pyomo and idaes
+libraries.
+
+To those familiar with IDAES, this may appear to be a more complicated
+approach to fixing an outlet variable, as typically you would fix it
+directly rather than worrying about which state variable you are
+replacing. However,it provides a natural form of documentation for the model and modelling process,
+as shown above. It also simplifies initialisation and interpretation of the model, as will
+be discussed in \Cref{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}.
+
+\hypertarget{special-cases-for-integrating-pyomo-replace-with-the-idaes-framework}{%
+\subsection{Special cases for integrating Pyomo-Replace with the IDAES
+Framework}\label{special-cases-for-integrating-pyomo-replace-with-the-idaes-framework}}
+
+In pyomo-replace, to integrate with the pyomo framework we have had to
+support indexed variables, networks of blocks, tear guesses, and
+optimisation. This section discusses how these higher-level abstractions
+impact the application of variable replacement in the domain of chemical
+simulation problems.
+
+\hypertarget{indexed-variables}{%
+\paragraph{Indexed Variables}\label{indexed-variables}}
+
+We have previously discussed how pyomo allows indexing variables by a
+constant set of indexes. This provides a convenient grouping of
+variables.
+
+One Indexed Variable may be replaced by another Indexed Variable so long
+as the size of the indexed variables (the number of items in it's index
+set) are the same, and the model is still structurally sound afterwards;
+i.e there are no over or under-constrained variable sets. This is a
+convenient abstraction as it avoids having to replace each individual
+variable in a set. For example, in a tank, you could specify level over
+time instead of flow rate out of the tank over time. As long as they are
+both indexed by time, there will be no problems as the number of
+constraints removed is equal to the number of constraints added.
+
+\hypertarget{calculating-inlet-properties}{%
+\paragraph{Calculating Inlet
+Properties}\label{calculating-inlet-properties}}
+
+Inlets that are not connected to anything upstream are considered to be
+Standard Variables. They can be replaced by other variables. This is
+generally fine, but some models are built with the expectation that
+inlet conditions are calculated. For example, the pressure exchanger
+model at \citep{watertap_pressure_exchanger} expects that the inlet flow
+on both sides is the same, meaning the flow of only one side needs to be
+fixed: the other side will be calculated to match. This type of model
+simply cannot work under the constraints we have applied on the system.
+
+However, there is a simple workaround to make these models possible. In
+this example, the flow balance constraint can be replaced with a
+variable that calculates the residual between the flows. This residual
+can be fixed to zero if one of the inlet flows is unfixed as a state
+variable. It is up to the model developer to decide which constraint
+should instead be expressed as a residual, and to explain to the users
+of the model that the residual should be fixed. However, specifying the
+model this way has some advantages, as it will explicitly show the
+reasons the inlet conditions do not need to be fixed.
+
+\hypertarget{tear-guesses-in-network-loops}{%
+\paragraph{Tear Guesses in Network
+Loops}\label{tear-guesses-in-network-loops}}
+
+When an outlet is connected to an inlet that is upstream of the current
+Block, a cycle in the network graph is detected. Pyomo.network
+automatically handles detecting network loops, and requires that tear
+guesses must be specified to help the model initialise and solve. No
+special handling needs to take place for variable replacement to work
+with this.
+
+\hypertarget{application-to-optimisation-problems}{%
+\paragraph{Application to Optimisation
+Problems}\label{application-to-optimisation-problems}}
+
+Optimisation problems do not have zero degrees of freedom, and so this
+technique is not exactly applicable. However, generally a flowsheet is
+solved exactly, without performing optimisation, to provide a starting
+point for the optimisation algorithm. Then variables are unfixed and the
+optimisation problem is solved. This approach would work fine using the
+variable replacement methodology: variable replacement could be used to
+fully define the model for an initial solve. Then a set of additional
+variables can be unfixed and the optimisation algorithm can be run.
+
+Additionally, knowing the list of Standard Variables may still provide good
+context for optimisation, as any Standard Variables you unfix are the ones
+for which you are calculating an optimum value.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 \hypertarget{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}{%
 \section{Properties of a Variable Replacement approach to
@@ -830,6 +1013,28 @@ modify a model and maintain a solvable state. However, similar to typed
 languages in software development, the realisable benefit may depend on
 the use case.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 \hypertarget{case-studies}{%
 \section{Case Studies}\label{case-studies}}
 
@@ -1060,287 +1265,5 @@ different types of EOMs. Nonetheless, these techniques hold promise to
 standardise the creation and use of libraries of EOMs. This would enable
 equation-oriented modelling to be used in a more maintainable way on
 large projects, such as Process Digital Twins, in the future.
-
-
-\hypertarget{appendix}{%
-\section{Appendix}\label{appendix}}
-
-\hypertarget{introduction-to-pyomo-replace}{%
-\subsection{Introduction to
-Pyomo-replace}\label{introduction-to-pyomo-replace}}
-
-Pyomo-replace is a simple library to keep track of the Standard Variables
-in an IDAES model, and what variables are replacing them. The list of
-Standard Variables and replacements can be easily printed to the screen to
-help explain the model structure.
-
-In Pyomo, an EOM is specified as a set of Blocks, with each block
-containing variables and constraints between variables. A Block may
-contain Ports, which provide a method of connecting Blocks together.
-
-A Port is simply a collection of variables on a block. A port is
-specified to be either an Inlet Port or an Outlet Port. An Inlet port
-may be connected to an Outlet port containing an equivalent collection
-of variables. The inlet and outlet port do not need to be on the same
-block. Connecting two ports creates an equality constraint between the
-variable on the Outlet and the variable on the Inlet, that is, the
-variable on the inlet is defined to be equal to the corresponding
-variable on the outlet port.
-
-The IDAES framework makes it easy to model chemical engineering problems
-in pyomo. An equation-oriented model typically represents a chemical
-flowsheet, a Block typically represents a unit operation, and Inlet and
-Outlet Ports represent inlets and outlets of a unit operation.
-Pyomo-replace is specifically targeted to representing these types of
-EOMs.
-
-\hypertarget{state-variables}{%
-\subsubsection{Standard Variables}\label{state-variables}}
-
-Because each block contains a set of variables and constraints, it can
-be considered an independent system of equations and solved
-independently if the appropriate number of variables are fixed to make
-the problem square. We call the initial set of fixed variables the
-``\emph{Standard Variables}''.
-
-The Standard Variables are chosen by first fixing all inlet variables. By
-convention, all inlet variables are automatically considered state
-variables, if and only if the inlet is not connected to an outlet. Then,
-additional variables are fixed in the model until the model is square.
-These variables are also considered Standard Variables.
-
-Typically, the set of Standard Variables would be defined by the author of
-the block. As Blocks are an abstraction designed to be reused, this
-could be the developer of a library of modelling components, rather than
-the modeller of a specific flowsheet.
-
-\hypertarget{building-a-model}{%
-\subsubsection{Building a model}\label{building-a-model}}
-
-In IDAES, a model is built from a number of blocks. By default, all
-Standard Variables are fixed, and all unconnected inlets are fixed, and so
-there will be no degrees of freedom. This fully specifies the model, as
-all operations are fully defined: either explicitly, or based on the
-outlet conditions of other operations.
-
-\hypertarget{replacing-variables.}{%
-\subsubsection{Replacing Variables.}\label{replacing-variables.}}
-
-Once a model is built, different variables can be fixed instead of the
-Standard Variables. For this to happen, a couple of conditions need to be
-met:
-
-\begin{itemize}
-\tightlist
-\item
-  A variable must be chosen (that is not already fixed) and fixed. As
-  the model was previously fully defined, this will make the model
-  over-defined, with -1 degrees of freedom.
-\item
-  To prevent the model becoming over-defined, a state variable must be
-  chosen and unfixed. We say this state variable has been ``replaced''
-  with the new variable.
-\item
-  The state variable must be chosen such that all equations in the model
-  are still linearly independent. This can be done by choosing a state
-  variable that is part of the Dulmage-Mendelson Over-constrained set
-  when the new variable was fixed and the model was at -1 degrees of
-  freedom.
-\end{itemize}
-
-Metadata about which variables are replacing which Standard Variables is
-stored. If a variable is ever unfixed, the state variable it replaced
-must be fixed again.
-
-As long as these conditions are met, the model will stay at zero degrees
-of freedom and remain structurally valid. These rules are the essence of
-the variable replacement methodology.
-
-\hypertarget{an-example-in-idaes.}{%
-\subsubsection{An example in IDAES.}\label{an-example-in-idaes.}}
-
-To show how pyomo-replace demonstrates the replacement logic, we will
-consider a simple example of a heater, where the inlet properties are
-specified and the outlet temperature is specified, and the heat duty is
-calculated from the outlet temperature.
-
-First we must define the basic structure:
-
-\begin{verbatim}
-> m = pyo.ConcreteModel()
-> m.fs = FlowsheetBlock(dynamic=False)
-> m.fs.pp = iapws95.Iapws95ParameterBlock()
-> m.fs.compressor = SVCompressor(property_package=m.fs.pp)
-\end{verbatim}
-
-These lines:
-
-\begin{itemize}
-\tightlist
-\item
-  Create a new EOM in the Pyomo Framework
-\item
-  Add a IDAES Flowsheet into the EOM (This always required when building
-  models with IDAES)
-\item
-  Specify the fluid property package to model water, using the IAPWS95
-  specification \citep{wagner2002iapws}
-\item
-  Add a Compressor unit operation to the flowsheet, using the IAPWS95
-  property package to model the properties of the water.
-\end{itemize}
-
-The \texttt{SVCompressor} unit model is an extension of the IDAES
-\texttt{Compressor} unit model that defines the Standard Variables that
-should be used by \texttt{pyomo-replace}.
-
-For simplicity we will focus on only one unit operation, because it is
-sufficient to show all the functionality of pyomo-replace. The methods
-are the same for flowsheets with more unit models. Once the unit models
-have been added to the flowsheet and connected up, pyomo-replace
-requires that all inlet ports are registered as Standard Variables:
-
-\begin{verbatim}
-> register_inlet_ports(m.fs)
-\end{verbatim}
-
-This registers the properties of all inlet ports that do not have
-another model upstream as state vars. This is done after the unit models
-have been fully defined and any connections between unit operations have
-been made. Once this method is called, the model should have zero
-degrees of freedom.
-
-Now we can view all the Standard Variables:
-
-\begin{verbatim}
-> pprint_replacements(m.fs)
-\end{verbatim}
-
-This prints a list of all Standard Variables, and any that are being
-replaced by other variables. As we have not yet replaced any state
-variables, it would simply print a list of all the variables that we
-need to either set a value for, or replace:
-
-\begin{verbatim}
-Unreplaced Standard Variables:
- fs.compressor.work_mechanical
- fs.compressor.efficiency_isentropic
- fs.compressor.inlet.flow_mol
- fs.compressor.inlet.enth_mol
- fs.compressor.inlet.pressure
-\end{verbatim}
-
-However, we wanted to specify the outlet pressure instead of the
-compressor Replacing a variable is as simple as calling a function,
-passing the new variable to fix and the state variable to unfix:
-
-\begin{verbatim}
-> replace_state_var(m.fs.compressor.ratioP, m.fs.heater.outlet.pressure)
-\end{verbatim}
-
-Now we can run \texttt{pprint\_replacements} again, to show that
-\texttt{work\_mechanical} has been replaced by \texttt{outlet.pressure}.
-
-\begin{verbatim}
-> pprint_replacements(m.fs)
-
-Replaced Standard Variables:
-  (Fixed Variable) -> (Replaced State Variable)
-  fs.h1.outlet.pressure -> fs.compressor.work_mechanical
-
-Unreplaced Standard Variables in block fs:
-  fs.compressor.efficiency_isentropic
-  fs.compressor.inlet.flow_mol
-  fs.compressor.inlet.enth_mol
-  fs.compressor.inlet.pressure
-\end{verbatim}
-
-You can then set a value for \texttt{outlet.pressure} and all the other
-Standard Variables, and provide a guess for \texttt{ratioP}. This model can
-then be initialized and solved using the standard pyomo and idaes
-libraries.
-
-To those familiar with IDAES, this may appear to be a more complicated
-approach to fixing an outlet variable, as typically you would fix it
-directly rather than worrying about which state variable you are
-replacing.
-
-\hypertarget{special-cases-for-integrating-pyomo-replace-with-the-idaes-framework}{%
-\subsection{Special cases for integrating Pyomo-Replace with the IDAES
-Framework}\label{special-cases-for-integrating-pyomo-replace-with-the-idaes-framework}}
-
-In pyomo-replace, to integrate with the pyomo framework we have had to
-support indexed variables, networks of blocks, tear guesses, and
-optimisation. This section discusses how these higher-level abstractions
-impact the application of variable replacement in the domain of chemical
-simulation problems.
-
-\hypertarget{indexed-variables}{%
-\paragraph{Indexed Variables}\label{indexed-variables}}
-
-We have previously discussed how pyomo allows indexing variables by a
-constant set of indexes. This provides a convenient grouping of
-variables.
-
-One Indexed Variable may be replaced by another Indexed Variable so long
-as the size of the indexed variables (the number of items in it's index
-set) are the same, and the model is still structurally sound afterwards;
-i.e there are no over or under-constrained variable sets. This is a
-convenient abstraction as it avoids having to replace each individual
-variable in a set. For example, in a tank, you could specify level over
-time instead of flow rate out of the tank over time. As long as they are
-both indexed by time, there will be no problems as the number of
-constraints removed is equal to the number of constraints added.
-
-\hypertarget{calculating-inlet-properties}{%
-\paragraph{Calculating Inlet
-Properties}\label{calculating-inlet-properties}}
-
-Inlets that are not connected to anything upstream are considered to be
-Standard Variables. They can be replaced by other variables. This is
-generally fine, but some models are built with the expectation that
-inlet conditions are calculated. For example, the pressure exchanger
-model at \citep{watertap_pressure_exchanger} expects that the inlet flow
-on both sides is the same, meaning the flow of only one side needs to be
-fixed: the other side will be calculated to match. This type of model
-simply cannot work under the constraints we have applied on the system.
-
-However, there is a simple workaround to make these models possible. In
-this example, the flow balance constraint can be replaced with a
-variable that calculates the residual between the flows. This residual
-can be fixed to zero if one of the inlet flows is unfixed as a state
-variable. It is up to the model developer to decide which constraint
-should instead be expressed as a residual, and to explain to the users
-of the model that the residual should be fixed. However, specifying the
-model this way has some advantages, as it will explicitly show the
-reasons the inlet conditions do not need to be fixed.
-
-\hypertarget{tear-guesses-in-network-loops}{%
-\paragraph{Tear Guesses in Network
-Loops}\label{tear-guesses-in-network-loops}}
-
-When an outlet is connected to an inlet that is upstream of the current
-Block, a cycle in the network graph is detected. Pyomo.network
-automatically handles detecting network loops, and requires that tear
-guesses must be specified to help the model initialise and solve. No
-special handling needs to take place for variable replacement to work
-with this.
-
-\hypertarget{application-to-optimisation-problems}{%
-\paragraph{Application to Optimisation
-Problems}\label{application-to-optimisation-problems}}
-
-Optimisation problems do not have zero degrees of freedom, and so this
-technique is not exactly applicable. However, generally a flowsheet is
-solved exactly, without performing optimisation, to provide a starting
-point for the optimisation algorithm. Then variables are unfixed and the
-optimisation problem is solved. This approach would work fine using the
-variable replacement methodology: variable replacement could be used to
-fully define the model for an initial solve. Then a set of additional
-variables can be unfixed and the optimisation algorithm can be run.
-
-Additionally, knowing the list of Standard Variables may still provide good
-context for optimisation, as any Standard Variables you unfix are the ones
-for which you are calculating an optimum value.
 
 \newpage
