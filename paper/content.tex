@@ -184,7 +184,7 @@ the model in a way that the initialisation method does not expect, it may fail.
 
 
 \hypertarget{method}{%
-\section{Method}\label{method}}
+\section{Materials \& Methods}\label{method}}
 
 The implicit formulation of EOMs means there is much freedom in how they are defined.
 However, the expressiveness makes it much harder to reason about the structure or 
@@ -593,12 +593,210 @@ for which you are calculating an optimum value.
 
 
 
+\hypertarget{case-studies}{%
+\section{Results}\label{case-studies}}
 
+To demonstrate the usefulness of a these methods in designing process models,
+this section includes three examples.
+The first discusses a geothermal plant, showing how Variable Replacement
+makes it easier to keep track of the sources of variability in the
+system. The second discusses a Dynamic Tank, showing how Variable
+Replacement can work with a time-based problem. The third discusses how
+variable replacement makes it easier to create User Interfaces (UIs) for
+building equation oriented models from sets of pre-configured equations.
 
+\hypertarget{geothermal-power-plant}{%
+\subsection{Geothermal Power Plant}\label{geothermal-power-plant}}
 
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{assets/geothermal-replacement.drawio.png}
+\caption{Flow Diagram of a fully specified Geothermal Power Plant,
+demonstrating which Standard Variables are being replaced.}
+\end{figure}
 
+A model of a geothermal plant, outlined in \citep{severinsen2024digital}
+is shown here as a test case. This model includes four heat exchangers
+(the condenser, recouperator, preheater, and vaporiser), one turbine,
+and one pump. Each of these unit operations contribute one or two
+degrees of freedom: The heat exchangers need Area and Heat Transfer
+Coefficient (abbreviated as HTC) to be specified, and the Turbine and
+Pump both need efficiency and mechanical work. Additionally, the Steam
+Inlet, Air inlet, and Brine inlet need their temperature, pressure, and
+flow to be specified, as they are not connected to any upstream unit
+operations.
 
+However, the plant data includes stream pressures and temperatures, so
+the mechanical work and heat transfer coefficients are not actually set
+in this model. Instead, they are replaced with the pressure or
+temperature measured on the stream flowing out of the unit operations.
+Because of the replacement system, it is easy to see exactly why each of
+these temperatures and pressures need to be specified, and why the other
+streams (e.g from the recouperator to the condenser) do not need their
+properties specified.
 
+Those familiar with control systems may note that the variable
+replacement approach for the pump looks similar to the control scheme of
+a pump in a P\&ID Diagram, where the amount of work the pump does is
+controlled by a PID tuner that reads from a pressure sensor. The concept
+is not exactly analogous for heat exchangers, where the sizing is
+pre-determined, but the parallels may be helpful in gaining an intuition
+for how degrees of freedom replacement behaves.
+
+Of particular note is the flow in the brine inlet. The factory does not
+record the brine flow in, however it does record the total flow out.
+Thus, we can replace the Brine inlet flow with the Total flow, and the
+Brine flow will be back-calculated. Note that the brine outlet flow is
+specified much later downstream from the brine inlet. When this happens
+in conventional Degree of Freedom replacement systems, it can be very
+hard to understand why the brine outlet flow needs to be specified. By
+using a Variable Replacement approach, it is immediately obvious.
+Specifying stream properties downstream of an operation, sometimes
+significantly downstream, is a common practice when modelling, and
+Variable replacement makes it easier to understand why these properties
+need to be specified.
+
+\hypertarget{dynamic-tank}{%
+\subsection{Dynamic Tank}\label{dynamic-tank}}
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{assets/dynamics.drawio.png}
+\caption{A model of a tank with valves controlling the inlet and the
+outlet. Properties with an asterisk (*) next to them are not
+time-indexed. The tank outlet pressure is referenced by the PID
+controller, but is not a state variable.}
+\end{figure}
+
+A dynamic flowsheet allows us to test a different aspect of our system:
+how indexed variables are handled. In this flowsheet, we have a steam
+tank, modelled as a Heater in idaes, with a constant volume and an inlet
+and outlet valve controlling the flow rate in and out of the tank. The
+flow into the tank is controlled by a PID controller, which is targeting
+a certain outlet pressure within the tank.
+
+Both the valves have two Standard Variables: the valve coefficient, and the
+valve opening fraction. However, the valve coefficient is a constant
+property; it cannot be changed throughout the simulation. To indicate
+this, we have included an asterisk (*) next to them. In contrast, the
+valve opening fraction can be changed over time, and so in IDAES it is
+indexed by time. It is actually a set of variables, one variable for
+every time step across the simulation. Variables with an asterisk next
+to them cannot replace variables without an asterisk and vice versa,
+because the time indexed variables actually represent many degrees of
+freedom, while the others only represent one degree of freedom. However,
+in almost all cases it makes sense to treat the variable across time in
+the same manner (either you want to fix it, or you don't.)
+
+In this flowsheet, only two replacements are required. The first
+involves replacing the inlet flow with the outlet pressure. These can be
+replaced because a pressure difference between the inlet and the outlet
+is what drives the fluid through the system. The flow can be calculated
+from the valve pressure-flow correlation. Both pressure and flow are
+time-indexed properties, so they each represent the same number of
+degrees of freedom. Note that with our initialisation strategy, we start
+with a guess for flow, and then we initialise with that. After
+initialisation is completed, the flowsheet re-solves with the correct
+outlet pressure fixed, recalculating what the true flow value is.
+
+The second replacement involves replacing the valve opening fraction
+with the setpoint. The PID controller sets the value of the valve
+opening fraction, so the valve opening fraction no longer needs to be
+specified. This goes against the general logic of variable replacement.
+However, the setpoint of the PID controller needs to be specified. So we
+can add a replacement to say that the setpoint replaces the valve
+opening fraction. This is a simple solution that can be done when the
+PID controller is connected up to the valve opening fraction.
+
+Initial Material Accumulation and Initial Energy Accumulation can be
+treated as additional Standard Variables if it is appropriate. It would be
+feasible to use the replacement logic to replace them with Initial
+Material Holdup and Initial Energy Holdup. However, typically dynamic
+flowsheets start with a steady-state assumption, and all accumulation
+terms are fixed to zero.
+
+This case study successfully demonstrates that the variable replacement
+logic can easily be extended to more complex flowsheet scenarios
+involving dynamics or other indexed variables.
+
+\hypertarget{ahuora-digital-twin-platform}{%
+\subsection{Ahuora Digital Twin
+Platform}\label{ahuora-digital-twin-platform}}
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{assets/ahuora-interface.png}
+\caption{A Heat pump in the Ahuora Platform.}
+\end{figure}
+
+While this paper has focused on the theoretical advantages of a Variable
+Replacement methodology, a major reason we have developed this method of
+variable replacement is because it works particularly well in a
+graphical user interface.
+
+The Ahuora Digital Twin Platform is a web-based process simulation
+environment. It is built using IDAES and Pyomo as the equation-oriented
+modelling libraries as the simulation backend.
+
+Each unit operation has a set of Standard Variables, where the user can
+enter a value, and a set of calculated variables, which cannot be
+entered by the user. If a user wants to fix a calculated variable, an
+appropriate state variable has to be chosen and ``replaced''. This makes
+the state variable a ``guess'': the user still needs to enter a value,
+but it is shown with no background color, to indicate to the user that
+it will be calculated when the flowsheet is solved. A message tells the
+user what variable is replacing it. The calculated variable then shows
+up like a state variable, with a message to show which variable it is
+replacing. This ensures the user is informed about which variable is
+being replaced by which.
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{assets/ahuora-replacement.png}
+\caption{Variable replacement on a Compressor model in the Ahuora
+Platform.}
+\end{figure}
+
+In the example image, the ``Pressure Drop'' state variable is fixed at 0
+kPa. The ``Mechanical Work'' state variable in the Compressor is being
+replaced by the Pressure at the outlet stream. An initial guess for
+``Mechanical Work'' may still be entered, which is updated to the
+correct value, which is based on the pressure specified at the outlet,
+when the model solves.
+
+Before using the variable replacement approach, we only limited the user
+to a fixed set of choices of variables for each unit operation. However,
+this reduced functionality significantly as there was no method to
+specify unit models indirectly, such as through downstream properties.
+We thought about trying a degrees of freedom approach, but were
+concerned that it would be much too confusing as it didn't provide the
+user with any direction on how to get started.
+
+One of the major advantages of Variable Replacement that we have noticed
+in a GUI is that it provides additional context for unit operations. In
+a GUI program, it is very easily to visually show that context by
+styling fixed Standard Variables, guesses, and calculated variables
+differently, and to show the links between variables.
+
+Working with a GUI also means that adding and removing unit operations
+is common, and Variable Replacement provides a sensible way to deal with
+adding or removing unit operations. When a unit operation is added, it's
+Standard Variables and inlet ports are fixed by default to ensure the
+degrees of freedom are still zero. When a unit operation is removed,
+anything that is replacing it's Standard Variables is also unfixed, and any
+inlet ports that were previously connected to the outlet of the unit
+operation are fixed, again keeping the degrees of freedom at zero.
+
+The GUI also does not provide any way to write custom initialisation
+routines, because these are usually specified as python code and can be
+quite complex, so it is out of scope of the project. However, the
+multi-stage initialisation that naturally works with variable
+replacement helps to improve the reliability of solving. As guesses are
+specified for the Standard Variables, these can be used in the
+initialisation routine. In particular, this enables us to specify any
+set of variables to define the conditions of an inlet stream, whereas
+IDAES does not have initialisation routines for any set of state
+variables and is typically limited to only a certain set of properties.
 
 
 
@@ -613,9 +811,7 @@ for which you are calculating an optimum value.
 
 
 \hypertarget{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}{%
-\section{Properties of a Variable Replacement approach to
-Equation-oriented
-Modelling}\label{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}}
+\section{Discussion}\label{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}}
 
 This method of replacing Standard Variables to define a model does not
 fundamentally change the model itself. However, specifying a model in
@@ -1017,231 +1213,8 @@ the use case.
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\hypertarget{case-studies}{%
-\section{Case Studies}\label{case-studies}}
-
-To help demonstrate the potential of a Variable Replacement approach to
-designing systems built on EOMs, this section includes three examples.
-The first discusses a geothermal plant, showing how Variable Replacement
-makes it easier to keep track of the sources of variability in the
-system. The second discusses a Dynamic Tank, showing how Variable
-Replacement can work with a time-based problem. The third discusses how
-variable replacement makes it easier to create User Interfaces (UIs) for
-building equation oriented models from sets of pre-configured equations.
-
-\hypertarget{geothermal-power-plant}{%
-\subsection{Geothermal Power Plant}\label{geothermal-power-plant}}
-
-\begin{figure}
-\centering
-\includegraphics[width=\textwidth]{assets/geothermal-replacement.drawio.png}
-\caption{Flow Diagram of a fully specified Geothermal Power Plant,
-demonstrating which Standard Variables are being replaced.}
-\end{figure}
-
-A model of a geothermal plant, outlined in \citep{severinsen2024digital}
-is shown here as a test case. This model includes four heat exchangers
-(the condenser, recouperator, preheater, and vaporiser), one turbine,
-and one pump. Each of these unit operations contribute one or two
-degrees of freedom: The heat exchangers need Area and Heat Transfer
-Coefficient (abbreviated as HTC) to be specified, and the Turbine and
-Pump both need efficiency and mechanical work. Additionally, the Steam
-Inlet, Air inlet, and Brine inlet need their temperature, pressure, and
-flow to be specified, as they are not connected to any upstream unit
-operations.
-
-However, the plant data includes stream pressures and temperatures, so
-the mechanical work and heat transfer coefficients are not actually set
-in this model. Instead, they are replaced with the pressure or
-temperature measured on the stream flowing out of the unit operations.
-Because of the replacement system, it is easy to see exactly why each of
-these temperatures and pressures need to be specified, and why the other
-streams (e.g from the recouperator to the condenser) do not need their
-properties specified.
-
-Those familiar with control systems may note that the variable
-replacement approach for the pump looks similar to the control scheme of
-a pump in a P\&ID Diagram, where the amount of work the pump does is
-controlled by a PID tuner that reads from a pressure sensor. The concept
-is not exactly analogous for heat exchangers, where the sizing is
-pre-determined, but the parallels may be helpful in gaining an intuition
-for how degrees of freedom replacement behaves.
-
-Of particular note is the flow in the brine inlet. The factory does not
-record the brine flow in, however it does record the total flow out.
-Thus, we can replace the Brine inlet flow with the Total flow, and the
-Brine flow will be back-calculated. Note that the brine outlet flow is
-specified much later downstream from the brine inlet. When this happens
-in conventional Degree of Freedom replacement systems, it can be very
-hard to understand why the brine outlet flow needs to be specified. By
-using a Variable Replacement approach, it is immediately obvious.
-Specifying stream properties downstream of an operation, sometimes
-significantly downstream, is a common practice when modelling, and
-Variable replacement makes it easier to understand why these properties
-need to be specified.
-
-\hypertarget{dynamic-tank}{%
-\subsection{Dynamic Tank}\label{dynamic-tank}}
-
-\begin{figure}
-\centering
-\includegraphics[width=\textwidth]{assets/dynamics.drawio.png}
-\caption{A model of a tank with valves controlling the inlet and the
-outlet. Properties with an asterisk (*) next to them are not
-time-indexed. The tank outlet pressure is referenced by the PID
-controller, but is not a state variable.}
-\end{figure}
-
-A dynamic flowsheet allows us to test a different aspect of our system:
-how indexed variables are handled. In this flowsheet, we have a steam
-tank, modelled as a Heater in idaes, with a constant volume and an inlet
-and outlet valve controlling the flow rate in and out of the tank. The
-flow into the tank is controlled by a PID controller, which is targeting
-a certain outlet pressure within the tank.
-
-Both the valves have two Standard Variables: the valve coefficient, and the
-valve opening fraction. However, the valve coefficient is a constant
-property; it cannot be changed throughout the simulation. To indicate
-this, we have included an asterisk (*) next to them. In contrast, the
-valve opening fraction can be changed over time, and so in IDAES it is
-indexed by time. It is actually a set of variables, one variable for
-every time step across the simulation. Variables with an asterisk next
-to them cannot replace variables without an asterisk and vice versa,
-because the time indexed variables actually represent many degrees of
-freedom, while the others only represent one degree of freedom. However,
-in almost all cases it makes sense to treat the variable across time in
-the same manner (either you want to fix it, or you don't.)
-
-In this flowsheet, only two replacements are required. The first
-involves replacing the inlet flow with the outlet pressure. These can be
-replaced because a pressure difference between the inlet and the outlet
-is what drives the fluid through the system. The flow can be calculated
-from the valve pressure-flow correlation. Both pressure and flow are
-time-indexed properties, so they each represent the same number of
-degrees of freedom. Note that with our initialisation strategy, we start
-with a guess for flow, and then we initialise with that. After
-initialisation is completed, the flowsheet re-solves with the correct
-outlet pressure fixed, recalculating what the true flow value is.
-
-The second replacement involves replacing the valve opening fraction
-with the setpoint. The PID controller sets the value of the valve
-opening fraction, so the valve opening fraction no longer needs to be
-specified. This goes against the general logic of variable replacement.
-However, the setpoint of the PID controller needs to be specified. So we
-can add a replacement to say that the setpoint replaces the valve
-opening fraction. This is a simple solution that can be done when the
-PID controller is connected up to the valve opening fraction.
-
-Initial Material Accumulation and Initial Energy Accumulation can be
-treated as additional Standard Variables if it is appropriate. It would be
-feasible to use the replacement logic to replace them with Initial
-Material Holdup and Initial Energy Holdup. However, typically dynamic
-flowsheets start with a steady-state assumption, and all accumulation
-terms are fixed to zero.
-
-This case study successfully demonstrates that the variable replacement
-logic can easily be extended to more complex flowsheet scenarios
-involving dynamics or other indexed variables.
-
-\hypertarget{ahuora-digital-twin-platform}{%
-\subsection{Ahuora Digital Twin
-Platform}\label{ahuora-digital-twin-platform}}
-
-\begin{figure}
-\centering
-\includegraphics[width=\textwidth]{assets/ahuora-interface.png}
-\caption{A Heat pump in the Ahuora Platform.}
-\end{figure}
-
-While this paper has focused on the theoretical advantages of a Variable
-Replacement methodology, a major reason we have developed this method of
-variable replacement is because it works particularly well in a
-graphical user interface.
-
-The Ahuora Digital Twin Platform is a web-based process simulation
-environment. It is built using IDAES and Pyomo as the equation-oriented
-modelling libraries as the simulation backend.
-
-Each unit operation has a set of Standard Variables, where the user can
-enter a value, and a set of calculated variables, which cannot be
-entered by the user. If a user wants to fix a calculated variable, an
-appropriate state variable has to be chosen and ``replaced''. This makes
-the state variable a ``guess'': the user still needs to enter a value,
-but it is shown with no background color, to indicate to the user that
-it will be calculated when the flowsheet is solved. A message tells the
-user what variable is replacing it. The calculated variable then shows
-up like a state variable, with a message to show which variable it is
-replacing. This ensures the user is informed about which variable is
-being replaced by which.
-
-\begin{figure}
-\centering
-\includegraphics[width=\textwidth]{assets/ahuora-replacement.png}
-\caption{Variable replacement on a Compressor model in the Ahuora
-Platform.}
-\end{figure}
-
-In the example image, the ``Pressure Drop'' state variable is fixed at 0
-kPa. The ``Mechanical Work'' state variable in the Compressor is being
-replaced by the Pressure at the outlet stream. An initial guess for
-``Mechanical Work'' may still be entered, which is updated to the
-correct value, which is based on the pressure specified at the outlet,
-when the model solves.
-
-Before using the variable replacement approach, we only limited the user
-to a fixed set of choices of variables for each unit operation. However,
-this reduced functionality significantly as there was no method to
-specify unit models indirectly, such as through downstream properties.
-We thought about trying a degrees of freedom approach, but were
-concerned that it would be much too confusing as it didn't provide the
-user with any direction on how to get started.
-
-One of the major advantages of Variable Replacement that we have noticed
-in a GUI is that it provides additional context for unit operations. In
-a GUI program, it is very easily to visually show that context by
-styling fixed Standard Variables, guesses, and calculated variables
-differently, and to show the links between variables.
-
-Working with a GUI also means that adding and removing unit operations
-is common, and Variable Replacement provides a sensible way to deal with
-adding or removing unit operations. When a unit operation is added, it's
-Standard Variables and inlet ports are fixed by default to ensure the
-degrees of freedom are still zero. When a unit operation is removed,
-anything that is replacing it's Standard Variables is also unfixed, and any
-inlet ports that were previously connected to the outlet of the unit
-operation are fixed, again keeping the degrees of freedom at zero.
-
-The GUI also does not provide any way to write custom initialisation
-routines, because these are usually specified as python code and can be
-quite complex, so it is out of scope of the project. However, the
-multi-stage initialisation that naturally works with variable
-replacement helps to improve the reliability of solving. As guesses are
-specified for the Standard Variables, these can be used in the
-initialisation routine. In particular, this enables us to specify any
-set of variables to define the conditions of an inlet stream, whereas
-IDAES does not have initialisation routines for any set of state
-variables and is typically limited to only a certain set of properties.
-
 \hypertarget{conclusion}{%
-\section{Conclusion}\label{conclusion}}
+\section{Conclusions}\label{conclusion}}
 
 Variable replacement provides an alternative way of maintaining a square
 model in an equation-oriented framework, particularly when scaling up to
