@@ -7,3 +7,5 @@ paper.pdf
 *.synctex*
 *.fdb*
 *.fls
+*.bbl
+*.blg
