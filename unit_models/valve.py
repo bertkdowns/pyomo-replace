@@ -33,7 +33,7 @@ class SVValveData(ValveData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.valve_opening, self.Cv] # these can be used to calculate CV
+        state_vars = [(self.valve_opening, "operation"), (self.Cv, "design")] # these can be used to calculate CV
         self.valve_opening.fix(0.9) # Default value
         self.Cv.fix(1)
         

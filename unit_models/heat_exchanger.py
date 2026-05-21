@@ -23,7 +23,7 @@ class SVHeatExchangerData(HeatExchangerData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.overall_heat_transfer_coefficient, self.area]
+        state_vars = [(self.overall_heat_transfer_coefficient,"design"), (self.area,"design")]
         self.overall_heat_transfer_coefficient.fix(50) # Default value
         self.area.fix(5)
 
@@ -31,10 +31,10 @@ class SVHeatExchangerData(HeatExchangerData):
         cold_side = self.cold_side
         
         if self.config.hot_side.has_pressure_change:
-            state_vars.append(hot_side.deltaP)
+            state_vars.append((hot_side.deltaP,"design"))
             hot_side.deltaP.fix(0)
         if self.config.cold_side.has_pressure_change:
-            state_vars.append(cold_side.deltaP)
+            state_vars.append((cold_side.deltaP,"design"))
             cold_side.deltaP.fix(0)
         
         # Setup the default state variables.

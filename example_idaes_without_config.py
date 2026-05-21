@@ -16,11 +16,11 @@ m.fs.h1.inlet.pressure.fix(1e5)
 register_block(
     m.fs.h1,
     [
-        m.fs.h1.inlet.flow_mol,
-        m.fs.h1.inlet.enth_mol,
-        m.fs.h1.inlet.pressure,
-        m.fs.h1.heat_duty,
-        m.fs.h1.deltaP,
+        (m.fs.h1.inlet.flow_mol, "operation"),
+        (m.fs.h1.inlet.enth_mol, "operation"),
+        (m.fs.h1.inlet.pressure, "operation"),
+        (m.fs.h1.heat_duty, "operation"),
+        (m.fs.h1.deltaP, "design"),
     ],
 )
 

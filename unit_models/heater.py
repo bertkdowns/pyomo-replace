@@ -15,15 +15,15 @@ class SVHeaterData(HeaterData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.heat_duty]
+        state_vars = [(self.heat_duty,"operation")]
         self.heat_duty.fix(100) # Default value
         if self.config.has_pressure_change:
-            state_vars.append(self.deltaP)
+            state_vars.append((self.deltaP,"design"))
             self.deltaP.fix(0) 
         if self.config.has_holdup:
-            state_vars.append(self.control_volume.volume)
-            state_vars.append(self.control_volume.energy_accumulation[0,"Liq"])
-            state_vars.append(self.control_volume.energy_accumulation[0,"Vap"])
+            state_vars.append((self.control_volume.volume,"design"))
+            state_vars.append((self.control_volume.energy_accumulation[0,"Liq"],"initial"))
+            state_vars.append((self.control_volume.energy_accumulation[0,"Vap"],"initial"))
         
         # Setup the default state variables.
         # Allow_degrees_of_freedom is set to True because 

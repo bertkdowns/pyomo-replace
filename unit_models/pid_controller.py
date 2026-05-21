@@ -16,7 +16,7 @@ class SVPIDControllerData(PIDControllerData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.gain_p,self.gain_i,self.mv_ref]
+        state_vars = [(self.gain_p,"operation"),(self.gain_i,"operation"),(self.mv_ref,"operation")]
         
         # Setup the default state variables.
         # Allow_degrees_of_freedom is set to True because 

@@ -16,7 +16,7 @@ class SVPumpData(PumpData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.work_mechanical, self.efficiency_pump]
+        state_vars = [(self.work_mechanical,"operation"), (self.efficiency_pump,"design")]
         self.work_mechanical.fix(10) # Default value
         self.efficiency_pump.fix(0.8)
         

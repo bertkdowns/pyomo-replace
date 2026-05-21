@@ -24,7 +24,7 @@ def is_child_of(block, component):
         parent = parent.parent_block()
     return False
 
-def register_block(block, state_vars: list, allow_degrees_of_freedom=False):
+def register_block(block, state_vars: list[tuple[Var,str]], allow_degrees_of_freedom=False):
     """
     This is used to identify which variables in the block should be the state variables.
     These variables, if fixed, should fully specify the block, i.e Degrees of freedom should be zero.
@@ -36,7 +36,7 @@ def register_block(block, state_vars: list, allow_degrees_of_freedom=False):
     Raises:
         ValueError: If any of the state variables are not part of the block, or if the block does not have zero degrees of freedom after fixing the state variables.
     """
-    for v in state_vars:
+    for v,category in state_vars:
         if is_child_of(v,block):
             raise ValueError(
                 f"Variable {v} is not part of the block {block.name} being registered"
@@ -74,31 +74,48 @@ def is_fixed(var : Var | IndexedVar):
         return var.fixed
     
 
-def list_state_vars(block):
+def get_state_vars(block):
+    """
+    List all state variables in the block
+    """
+    if hasattr(block, "_state_vars"):
+        return [v for v, category in block._state_vars]
+    return []
+
+def all_state_vars(block):
     """
     List all state variables in the block and its sub-blocks recursively.
     """
     state_vars = []
-    if hasattr(block, "_state_vars"):
-        state_vars.extend(block._state_vars)
+    state_vars.extend(get_state_vars(block))
     for b in block.component_objects(Block, descend_into=True):
-        if hasattr(b, "_state_vars"):
-            state_vars.extend(b._state_vars)
+        state_vars.extend(get_state_vars(b))
     return state_vars
 
+def all_state_var_categories(block: Block):
+    """
+    List all state variable categories in the block and its sub-blocks recursively.
+    """
+    categories: list[Var, str] = []
+    if hasattr(block, "_state_vars"):
+        categories.extend(block._state_vars)
+    for b in block.component_objects(Block, descend_into=True):
+        if hasattr(block, "_state_vars"):
+            categories.extend(block._state_vars)
+    return categories
 
 def list_guesses(block):
     """
     List all guess variables (state variables that have been replaced) in the block and its sub-blocks recursively.
     """
-    return [var for var in list_state_vars(block) if not is_fixed(var)]
+    return [var for var in all_state_vars(block) if not is_fixed(var)]
 
 
 def list_fixed_state_vars(block):
     """
     List all fixed state variables in the block and its sub-blocks recursively.
     """
-    return [var for var in list_state_vars(block) if is_fixed(var)]
+    return [var for var in all_state_vars(block) if is_fixed(var)]
 
 
 def list_replacements(block):
@@ -113,16 +130,6 @@ def list_replacements(block):
             replacements.extend(b._replacements)
     return replacements
 
-
-
-def _try_get_state_vars(block):
-    """
-    Helper function to get state vars from a block, or return an empty list if none are registered.
-    """
-    if hasattr(block, "_state_vars"):
-        return block._state_vars
-    else:
-        return []
 
 def _safe_equal(var1,var2):
     """
@@ -148,8 +155,23 @@ def list_available_vars(block):
     return (
         var
         for var in block.component_objects(Var, descend_into=True)
-        if not _has_var(var, _try_get_state_vars(var.parent_block)) and not is_fixed(var)
+        if not _has_var(var, get_state_vars(var.parent_block)) and not is_fixed(var)
     )
+
+def get_category(state_var: Var):
+    block = state_var.parent_block()
+    while (True):
+        if block is None:
+            break;
+        if not hasattr(block, "_state_vars"):
+            continue
+        # try find the category.
+        for v, category in block._state_vars:
+            if v is state_var:
+                return category
+        # Otherwise, loop and try the parent block.
+        block = block.parent_block()
+    raise ValueError(f"Variable {state_var} is not a registered state variable.")
 
 def closest_common_parent(comp1, comp2):
     # Collect all ancestors of comp1
@@ -184,19 +206,19 @@ def replace_state_var(state_var, new_var):
 
     # The state var must be currently fixed, and must be registered as a state var.
     if not hasattr(state_var_parent, "_state_vars") or not is_in(
-        state_var, state_var_parent._state_vars
+        state_var, get_state_vars(state_var_parent)
     ):
         raise ValueError(
-            f"Variable {state_var} is not a registered state variable in the closest common parent block {parent_block.name}."
+            f"Variable {state_var} is not a registered state variable in the block {state_var_parent.name}."
         )
     if not is_fixed(state_var):
         raise ValueError(f"Variable {state_var} must be fixed to be replaced.")
     # The new var must not be a state var, and must not be fixed.
-    if hasattr(new_var_parent, "_state_vars") and is_in(
-        new_var, new_var_parent._state_vars
+    if is_in(
+        new_var, get_state_vars(new_var_parent)
     ):
         raise ValueError(
-            f"Variable {new_var} is a registered state variable in the closest common parent block {parent_block.name}."
+            f"Variable {new_var} is a registered state variable in the block {new_var_parent.name}."
         )
     if is_fixed(new_var):
         raise ValueError(
@@ -245,6 +267,39 @@ def replace_state_var(state_var, new_var):
         parent_block._replacements = []
 
     parent_block._replacements.append((state_var, new_var))
+
+def undo_replacement(state_var):
+    parent_block = state_var.parent_block().flowsheet() # for now the flowsheet is where the replacements live. see replace_state_var.
+    if not hasattr(parent_block, "_replacements"):
+        raise ValueError(f"No replacements have been made in the parent block {parent_block.name} of variable {state_var}.")
+    replacements = parent_block._replacements
+    for i, (old_var, new_var) in enumerate(replacements):
+        if old_var is state_var:
+            # Revert the replacement
+            old_var.fix()
+            new_var.unfix()
+            # Remove the replacement from the list
+            del replacements[i]
+            # return the replacement that was undone so the user knows what variable is now unfixed.
+            return (old_var, new_var)
+
+def deactivate_category(category_name: str, block) -> list[tuple[Var, Var]]:
+    """
+    remove all replaced variables in the model with the given category name. This is useful for deactivating all design variables
+    """
+    replacements = list_replacements(block)
+    deactivated = []
+    for state_var, replaced_var in replacements:
+        category = get_category(state_var)
+        if category == category_name:
+            undo_replacement(state_var)
+            deactivated.append((state_var, replaced_var))
+    return deactivated
+
+def reactivate_vars(vars_to_reactivate: list[tuple[Var, Var]]):
+    for state_var, replaced_var in vars_to_reactivate:
+        replace_state_var(state_var, replaced_var)
+
 
 def fix_port(port: Port):
     """
@@ -316,8 +371,8 @@ def register_inlet_ports(block):
             # Add all variables in the port to the state vars if not already present
             for var_name in port.vars:
                 var = getattr(port, var_name)
-                if not _has_var(var, parent_block._state_vars):
+                if not _has_var(var, get_state_vars(parent_block)):
                     var.fix()
-                    parent_block._state_vars.append(var)
+                    parent_block._state_vars.append((var,"inlet"))
 
     

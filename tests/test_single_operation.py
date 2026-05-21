@@ -35,11 +35,11 @@ def test_replacements():
 
 def assert_replacement_works(m):
     # Check initial state
-    assert len(list_state_vars(m.fs)) == 5
+    assert len(all_state_vars(m.fs)) == 5
     assert len(list_replacements(m.fs)) == 0
     assert len(list_guesses(m.fs)) == 0
     # should also be the same at the block level
-    assert len(list_state_vars(m.fs.h1)) == 5
+    assert len(all_state_vars(m.fs.h1)) == 5
     assert len(list_replacements(m.fs.h1)) == 0
     assert len(list(list_guesses(m.fs.h1))) == 0
     pprint_replacements(m.fs)
@@ -51,9 +51,9 @@ def assert_replacement_works(m):
     replace_state_var(m.fs.h1.heat_duty, m.fs.h1.outlet.enth_mol)
 
 
-    assert len(list_state_vars(m.fs)) == 5  # The number of state vars shouldn't change
-    assert m.fs.h1.outlet.enth_mol not in list_state_vars(m.fs)
-    assert m.fs.h1.heat_duty in list_state_vars(m.fs.h1)
+    assert len(all_state_vars(m.fs)) == 5  # The number of state vars shouldn't change
+    assert m.fs.h1.outlet.enth_mol not in all_state_vars(m.fs)
+    assert m.fs.h1.heat_duty in all_state_vars(m.fs.h1)
 
     assert len(list_replacements(m.fs)) == 1
     # Replacements returns tuples of (state_var, new_var)

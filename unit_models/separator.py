@@ -22,26 +22,26 @@ class SVSeparatorData(SeparatorData):
             for outlet_name in outlet_list[:-1]: # exclude last outlet
                 for compound in self.config.property_package.component_list:
                     state_vars.append(
-                        self.split_fraction[outlet_name, compound]
+                        (self.split_fraction[outlet_name, compound], "operation")
                     )
 
         elif self.config.split_basis == SplittingType.totalFlow:
             for outlet_name in outlet_list[:-1]:
-                state_vars.append(self.split_fraction[outlet_name])
+                state_vars.append((self.split_fraction[outlet_name], "operation"))
         elif self.config.split_basis == SplittingType.phaseFlow:
             for outlet_name in outlet_list[:-1]:
                 for phase in self.config.property_package.phase_list:
                     state_vars.append(
-                        self.split_fraction_phase[outlet_name, phase]
+                        (self.split_fraction_phase[outlet_name, phase], "operation")
                     )
         elif self.config.split_basis == SplittingType.phaseComponentFlow:
             for outlet_name in outlet_list[:-1]:
                 for phase in self.config.property_package.phase_list:
                     for compound in self.config.property_package.get_phase_compounds(phase):
                         state_vars.append(
-                            self.split_fraction_phase_compound[
+                            (self.split_fraction_phase_compound[
                                 outlet_name, phase, compound
-                            ]
+                            ], "operation")
                         )
         else:
             raise ValueError(

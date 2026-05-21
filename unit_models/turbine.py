@@ -17,7 +17,7 @@ class SVTurbineData(TurbineData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.work_mechanical, self.efficiency_isentropic]
+        state_vars = [(self.work_mechanical, "operation"), (self.efficiency_isentropic, "design")]
         self.work_mechanical.fix(100) # Default value
         self.efficiency_isentropic.fix(0.8)
         

@@ -14,7 +14,7 @@ register_inlet_ports(m.fs)
 
 pprint_replacements(m.fs)
 
-replace_state_var(m.fs.compressor.ratioP, m.fs.compressor.outlet.pressure)
+replace_state_var(m.fs.compressor.deltaP, m.fs.compressor.outlet.pressure)
 pprint_replacements(m.fs)
 
 

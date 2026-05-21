@@ -5,12 +5,9 @@ Designing and operating chemical factories requires accurate,
 comprehensive models of their behaviour. With the advent of more
 computing resources and networked sites, process modelling has become
 more critical than ever before. One way this is shown is in the rise in
-popularity of Digital Twins, which try to make a complete and
+popularity of Digital Twins, which aim to make a complete and
 comprehensive model of many different properties of entire sites and
-their surroundings \citep{walmsley2024adaptive}. As these models have
-become larger, being able to understand all of the constraints within
-the system simultaneously becomes harder and harder, making it harder to
-run, interpret, or adjust the model.
+their surroundings \citep{walmsley2024adaptive}. 
 
 A powerful tool to represent processes is equation-oriented algebraic
 modelling, as processes often closely follow first-principles behaviour
@@ -18,8 +15,8 @@ and include non-linear dynamics, two things that equation-oriented
 modelling excels at \citep{shacham1982equation}. At its simplest,
 equation-oriented modelling involves specifying equations to represent
 the system, and solving those equations to find the unknown properties.
-However, modern processes are very complex, and Digital Twin technology
-means these models are built to be more integrated than ever before.
+This is very flexible which makes it a powerful tool to build Digital Twins.
+However, the comprehensiveness of a digital twin naturally leads to very complicated models.
 This results in very complex equation-oriented models (EOMs) and very
 large sets of equations.
 
@@ -29,23 +26,31 @@ AMPL \citep{fourer1990ampl}, Pyomo \citep{hart2011pyomo}, and JuMP \citep{lubin2
 AMLs apply software engineering principles of abstraction
 and encapsulation so that the entire system does not always have to be
 considered at once. This often means the person using the model does not
-directly interact with the equations behind it, making it difficult to
-know what is the best way to fully define the system and specify all
-degrees of freedom. Combining multiple models, and adding additional
+directly interact with the equations behind it. They may not
+know what is the best way to specify all
+degrees of freedom in the model. Combining multiple models and adding additional
 constraints further complicates the issue.
 
 This article discusses how treating equation-oriented models more like
 explicitly defined systems makes it simpler for a modeller to build,
-initialise, and reason about. We propose that the model developer should explicitly define an initial set
-of variables to constrain. As required, explicit variables can be replaced
-by other variables in the equation oriented model.
+initialise, and reason about. We propose that the model developer should explicitly define 
+which variables in the model are design variables, which are operating variables, and which are dependent variables.
+Design and operating variables are fixed by default. As required, design and operating variables can be replaced
+by dependent variables in the equation oriented model.
+
+While this approach is usually followed by model developers in practice, it is not formally included in the design
+of most equation-oriented modelling frameworks. By formally including it, the AML itself can provide guarantees 
+about the behaviour of the system, and it becomes easier to build tools on top of 
+the modelling framework to help with model construction and initialisation.
+
+
 Our library, pyomo-replace, demonstrates some
 advantages of this approach in the Pyomo and IDAES
 \citep{miller2018next} ecosystem, and the Ahuora Platform provides a
 case study of this approach in a graphical application.
 
 \hypertarget{literature-review}{%
-\subsection{Literature Review}\label{literature-review}}
+\subsection{Context}\label{literature-review}}
 
 \hypertarget{equation-oriented-modelling}{%
 \subsubsection{Equation-oriented
@@ -79,21 +84,14 @@ The main parts of these equations are:
 \subsubsection{Equation-oriented Modelling
 Frameworks}\label{equation-oriented-modelling-frameworks}}
 
-Variables and constraints, are fundamentally all that is
-required in a mathematical model. However, in AMLs additional
-abstractions have been developed for easier programmatic creation and
+Variables and constraints are fundamentally all that is
+required in a mathematical model. However, AMLs introduce layers of 
+abstraction for easier programmatic creation and
 manipulation of models, borrowing from conventional software development
 data structures. A common method is to group variables and 
 constraints into a reusable component. This is called a \textit{block} in Pyomo \citep{hart2011pyomo}, or a 
 \textit{model} in GPROMS \citep{amador2019introduction}. 
 
-Traditionally, EOMs were built in special-purpose languages, such as
-GAMS and AMPL. More recently they have moved to general-purpose
-programming languages, which make it easier to build additional tools 
-on top of the modelling language to help with model construction and
-initialisation.
-
-\citep{jusevivcius2021experimental}.
 
 \hypertarget{squaring-a-model}{%
 \subsubsection{Squaring a model}\label{squaring-a-model}}
@@ -135,9 +133,9 @@ model without understanding of what external constraints are applied.
 Some preliminary work has been conducted to show that in some cases
 issues can be identified in this level \citep{nilsson2008type}, but it
 is limited in its ability to detect errors and does not appear to have
-much uptake in systems such as Pyomo. Additionally, Dulmage-Mendelson
-Decomposition provides a big list of over-constrained or
-under-constrained components, but does not provide any insight into
+much uptake in systems such as Pyomo. Additionally, while Dulmage-Mendelson
+Decomposition provides a list of over-constrained or
+under-constrained components, it does not provide any insight into
 which one of them should be constrained.
 
 Much of the research on squaring a model focuses on \emph{if} a model
@@ -180,8 +178,22 @@ The exact method often depends on the model structure. The IDAES process modelli
 defines a seperate initialisation routine for each unit model that is added \citep{lee2021idaes}. However, as there
 are so many different ways of fully specifying a unit model, these initialisation methods quickly become complicated
 as they try to handle many different cases. Even so, if a user chooses to fully specify 
-the model in a way that the initialisation method does not expect, it may fail.
+the model in a way that the initialisation method does not expect, it may fail. 
+There is a need for more generalisable initialisation methods that can be used regardless of how the model is fully specified.
 
+\hypertarget{methods-of-modelling}{%
+\subsubsection{Process Modelling use cases}\label{methods-of-modelling}}
+
+Process models are typically used for one of two main purposes: design and operation \citep{pistikopoulos2021process}.  
+In design, the model is used to find the design variables that meet the process requirements. An example of this is sizing of heat exchangers to target a specific heat transfer rate.
+It can also be used for performance rating of a given fixed design under different conditions. This can be used as a validation method to check that the design is still suitable when it is not running under the normal optimal conditions.
+
+In operation, the model may used to find the optimal operating conditions for a process, 
+such as the flow rate of a valve or the duty of a heater. These can be the targets of a control system, or used for model predictive control. It may also be used to find the current state of the system, particularly to estimate properties that cannot be directly measured. Another use case is to estimate the effect of a change in an operating variable on the rest of the process.
+
+All of these cases require the model to be fully specified, but the choice of which variables to specify differs. A design model may calculate optimal values for design variables, such as heat exchanger area, but in a performance rating study or an operating model, these variables should be fixed. In operating models, if you are estimating the effect of changes to operating variables, then these should also be fixed. If you are trying to find the optimal operating conditions, then these should be unfixed and calculated by the model based on some other target conditions.
+
+While there are certain categories of variables that are typically fixed in different use cases, it can be hard to know which variables to unfix when design variables need to be fixed, or vice versa. The same is true for operating variables. 
 
 \hypertarget{method}{%
 \section{Materials \& Methods}\label{method}}
@@ -197,8 +209,8 @@ the behaviour of the system.
 We propose that each submodel be defined in a specific way:
 
 \begin{itemize}
-  \item a set of `Standard Variables' are fixed by default, such that the submodel has zero degrees of freedom, and all other variables are defined in terms of these Standard Variables.
-  \item if a user wants to fix a variable that is not a Standard Variable, they must choose a Standard Variable to unfix, and replace it with one of the calculated variables they want to fix.
+  \item a set of `Standard Variables' are fixed by default, such that the submodel has zero degrees of freedom, and all other variables are defined in terms of these Standard Variables. These Standard Variables are either design variables or operating variables in a process model.
+  \item if a user wants to fix a variable that is not a Standard Variable, they must choose a Standard Variable to unfix, and replace it with one of the dependent variables they want to fix.
   \item if a Standard Variable is unfixed, an initial guess must be provided for it.
 \end{itemize}
 
@@ -206,8 +218,8 @@ In essense, we treat the EOM as if it were explicitly defined. Note that the mod
 but in the user interface level it is treated as if it were.
 
 This leads to some helpful emergent properties that makes modelling large systems easier. 
-Degrees of freedom are no longer a problem, because the Standard Variables fully define the model, and for any variable that is fixed, a Standard Variable is unfixed, maintaining the degrees of freedom at zero.
-Initialisation becomes easier, as initialisation methods only need to be defined for the Standard Variables.
+Degrees of freedom are no longer a problem, because the Standard Variables fully define the model, and for any variable that is fixed, a design or operating variable is unfixed, maintaining the degrees of freedom at zero.
+Initialisation becomes easier, as initialisation methods only need to be defined for the Standard Variables. To convert a model from a design to operation to performance rating model, you can simply remove the replacements on the design or operating variables to re-fix them, while maintaining a fully defined model.
 
 \hypertarget{formal-definition-of-variable-replacement-methodology}{%
 \subsection{Formal Definition of Variable Replacement
@@ -306,6 +318,14 @@ As the result of a replacement is still an EOM, the process can be repeated. Eac
 \subsubsection{Initialisation of Models}\label{initialisation-of-repeated-replacement}}
 
 Initalisation methods can be written to calculate initial values for all variables based on the initial set of fixed variables (\(\mathcal{F}\)). After the initialisation method is run, the model can be solved with the new set of fixed variables (\(\mathcal{F}_{replaced}\)) to calculate the correct values of any variables that were originally fixed. This allows the same initialisation method to be used regardless of which variables are fixed as long as an initial guess is provided for the Standard Variables.
+
+\hypertarget{design-and-operation-variables}{
+\subsubsection{A method for switching between design, performance rating, and operation case studies}\label{design-and-operation-variables}}
+
+In a design case, the design variables can be replaced by dependent variables. This allows a modeller to design a process that meets target conditions. In a performance rating scenario, the design is fixed. Since the model has already defined which variables are design variables, and there is a link between each design variable and the dependent variable replacing it, it is easy to switch between design and performance rating by simply removing the replacements on the design variables. This will still maintain a fully defined model.
+
+Replacing an operating variable with a dependent variable models the effect of a control system on the operating variable when the control system is working effectively. However, those replacements can be removed to model the effect of a change in an operating variable on the rest of the process. This again maintains a fully defined model. Thus, variable replacement allows a modeller to easily switch between design, performance rating, and operation case studies with minimal effort.
+
 
 \hypertarget{introduction-to-pyomo-replace}{%
 \subsection{
@@ -471,11 +491,11 @@ Unreplaced Standard Variables:
 \end{verbatim}
 
 However, we wanted to specify the outlet pressure instead of the
-compressor Replacing a variable is as simple as calling a function,
+compressor mechanical work.  Replacing a variable is as simple as calling a function,
 passing the new variable to fix and the state variable to unfix:
 
 \begin{verbatim}
-> replace_state_var(m.fs.compressor.ratioP, m.fs.heater.outlet.pressure)
+> replace_state_var(m.fs.compressor.work_mechanical, m.fs.heater.outlet.pressure)
 \end{verbatim}
 
 Now we can run \texttt{pprint\_replacements} again, to show that

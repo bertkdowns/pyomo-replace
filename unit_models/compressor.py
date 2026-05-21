@@ -18,7 +18,7 @@ class SVCompressorData(CompressorData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [self.deltaP, self.efficiency_isentropic]
+        state_vars = [(self.deltaP,"operation"), (self.efficiency_isentropic,"design")]
         self.deltaP.fix(100) # Default value
         self.efficiency_isentropic.fix(0.8)
         
