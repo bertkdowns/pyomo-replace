@@ -330,7 +330,7 @@ def pprint_replacements(block):
         print(f"Replacements in block {block.name}:")
         print("(Variable -> Replaced State Var)")
         for old_var, new_var in list_replacements(block):
-            print(f"  {new_var} -> {old_var}")
+            print(f"  {new_var} -> {old_var}  ({get_category(old_var)})")
         print()
     
     state_vars = list_fixed_state_vars(block)
@@ -339,7 +339,7 @@ def pprint_replacements(block):
     else:
         print(f"Unreplaced state variables in block {block.name}:")
         for var in list_fixed_state_vars(block):
-            print(f"  {var}")
+            print(f"  {var}  ({get_category(var)})")
 
 
 

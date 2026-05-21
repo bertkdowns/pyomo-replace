@@ -209,17 +209,17 @@ the behaviour of the system.
 We propose that each submodel be defined in a specific way:
 
 \begin{itemize}
-  \item a set of `Standard Variables' are fixed by default, such that the submodel has zero degrees of freedom, and all other variables are defined in terms of these Standard Variables. These Standard Variables are either design variables or operating variables in a process model.
-  \item if a user wants to fix a variable that is not a Standard Variable, they must choose a Standard Variable to unfix, and replace it with one of the dependent variables they want to fix.
-  \item if a Standard Variable is unfixed, an initial guess must be provided for it.
+  \item a set of `Independent Variables' are fixed by default, such that the submodel has zero degrees of freedom, and all other variables are defined in terms of these Independent Variables. These Independent Variables are either design variables or operating variables in a process model.
+  \item if a user wants to fix a variable that is not an Independent Variable, they must choose an Independent Variable to unfix, and replace it with one of the dependent variables they want to fix.
+  \item if an Independent Variable is unfixed, an initial guess must be provided for it.
 \end{itemize}
 
 In essense, we treat the EOM as if it were explicitly defined. Note that the model itself does not need to be explicitly defined,
 but in the user interface level it is treated as if it were.
 
 This leads to some helpful emergent properties that makes modelling large systems easier. 
-Degrees of freedom are no longer a problem, because the Standard Variables fully define the model, and for any variable that is fixed, a design or operating variable is unfixed, maintaining the degrees of freedom at zero.
-Initialisation becomes easier, as initialisation methods only need to be defined for the Standard Variables. To convert a model from a design to operation to performance rating model, you can simply remove the replacements on the design or operating variables to re-fix them, while maintaining a fully defined model.
+Degrees of freedom are no longer a problem, because the Independent Variables fully define the model, and for any variable that is fixed, a design or operating variable is unfixed, maintaining the degrees of freedom at zero.
+Initialisation becomes easier, as initialisation methods only need to be defined for the Independent Variables. To convert a model from a design to operation to performance rating model, you can simply remove the replacements on the design or operating variables to re-fix them, while maintaining a fully defined model.
 
 \hypertarget{formal-definition-of-variable-replacement-methodology}{%
 \subsection{Formal Definition of Variable Replacement
@@ -312,12 +312,12 @@ that maintains the condition that \(DoF(\mathcal{M}_{new}) = 0\).
 \hypertarget{repeated-replacement}{%
 \subsubsection{Repeated Replacement}\label{repeated-replacement}}
 
-As the result of a replacement is still an EOM, the process can be repeated. Each time it is repeated, \(\mathcal{F}_{i}\) is updated to \(\mathcal{F}_{i+1}\).  This gradually replaces the original set of fixed variables (\(\mathcal{F}\), also called the Standard Variables) with a new set of fixed variables (\(\mathcal{F}_{replaced}\)). 
+As the result of a replacement is still an EOM, the process can be repeated. Each time it is repeated, \(\mathcal{F}_{i}\) is updated to \(\mathcal{F}_{i+1}\).  This gradually replaces the original set of fixed variables (\(\mathcal{F}\), also called the Independent Variables) with a new set of fixed variables (\(\mathcal{F}_{replaced}\)). 
 
 \hypertarget{initialisation-of-repeated-replacement}{%
 \subsubsection{Initialisation of Models}\label{initialisation-of-repeated-replacement}}
 
-Initalisation methods can be written to calculate initial values for all variables based on the initial set of fixed variables (\(\mathcal{F}\)). After the initialisation method is run, the model can be solved with the new set of fixed variables (\(\mathcal{F}_{replaced}\)) to calculate the correct values of any variables that were originally fixed. This allows the same initialisation method to be used regardless of which variables are fixed as long as an initial guess is provided for the Standard Variables.
+Initalisation methods can be written to calculate initial values for all variables based on the initial set of fixed variables (\(\mathcal{F}\)). After the initialisation method is run, the model can be solved with the new set of fixed variables (\(\mathcal{F}_{replaced}\)) to calculate the correct values of any variables that were originally fixed. This allows the same initialisation method to be used regardless of which variables are fixed as long as an initial guess is provided for the Independent Variables.
 
 \hypertarget{design-and-operation-variables}{
 \subsubsection{A method for switching between design, performance rating, and operation case studies}\label{design-and-operation-variables}}
@@ -333,9 +333,9 @@ Pyomo-replace: A Library for Variable Replacement in Equation-Oriented Models}\l
 
 To aid in evaluating the advantages of a variable replacement approach
 to equation-oriented modelling, we have created a small python package
-built on IDAES and pyomo, called pyomo-replace. It keeps track of the Standard Variables
+built on IDAES and pyomo, called pyomo-replace. It keeps track of the Independent Variables
 in an IDAES model, and what variables are replacing them. The list of
-Standard Variables and replacements can be easily printed to the screen to
+Independent Variables and replacements can be easily printed to the screen to
 help explain the model structure.
 
 In Pyomo, an EOM is specified as a set of Blocks, with each block
@@ -359,21 +359,21 @@ Pyomo-replace is specifically targeted to representing these types of
 EOMs.
 
 \hypertarget{state-variables}{%
-\subsubsection{Standard Variables}\label{state-variables}}
+\subsubsection{Independent Variables}\label{state-variables}}
 
 Because each block contains a set of variables and constraints, it can
 be considered an independent system of equations.
-Thus, each block has its own set of Standard Variables that are fixed by default to make it a square model.
+Thus, each block has its own set of Independent Variables that are fixed by default to make it a square model.
 
-The Standard Variables are chosen by first fixing all inlet variables. By
+The Independent Variables are chosen by first fixing all inlet variables. By
 convention, all inlet variables are automatically considered state
 variables, if and only if the inlet is not connected to an outlet. Then,
 additional variables are fixed in the model until the model is square.
-These variables are also considered Standard Variables.
+These variables are also considered Independent Variables.
 
-The set of Standard Variables is defined by the author of
+The set of Independent Variables is defined by the author of
 the block. This means that if a user imports a block from an external library,
-it comes with a predefined set of Standard Variables and initialisation methods that work with them.
+it comes with a predefined set of Independent Variables and initialisation methods that work with them.
 This provides a form of self-documentation and makes it easier to use
 external models.
 
@@ -381,7 +381,7 @@ external models.
 \subsubsection{Building a model}\label{building-a-model}}
 
 In IDAES, a model is built from a number of blocks. By default, all
-Standard Variables are fixed, and all unconnected inlets are fixed, and so
+Independent Variables are fixed, and all unconnected inlets are fixed, and so
 there will be no degrees of freedom. This fully specifies the model, as
 all operations are fully defined: either explicitly, or based on the
 outlet conditions of other operations.
@@ -390,7 +390,7 @@ outlet conditions of other operations.
 \subsubsection{Replacing Variables.}\label{replacing-variables.}}
 
 Once a model is built, different variables can be fixed instead of the
-Standard Variables. For this to happen, a couple of conditions need to be
+Independent Variables. For this to happen, a couple of conditions need to be
 met:
 
 \begin{itemize}
@@ -400,19 +400,19 @@ met:
   the model was previously fully defined, this will make the model
   over-defined, with -1 degrees of freedom.
 \item
-  To prevent the model becoming over-defined, a state variable must be
-  chosen and unfixed. We say this state variable has been ``replaced''
+  To prevent the model becoming over-defined, an independent variable must be
+  chosen and unfixed. We say the independent variable has been ``replaced''
   with the new variable.
 \item
-  The state variable must be chosen such that all equations in the model
+  The Independent Variable must be chosen such that all equations in the model
   are not structurally singular. This can be done by choosing a state
   variable that is part of the Dulmage-Mendelson Over-constrained set 
   when the new variable was fixed \citep{lee2024model}.
 \end{itemize}
 
-Metadata about which variables are replacing which Standard Variables is
+Metadata about which variables are replacing which Independent Variables is
 stored, for initialisation and interpretation purposes.
-If a variable is ever unfixed, the state variable it replaced
+If a variable is ever unfixed, the Independent Variable it replaced
 must be fixed again.
 
 
@@ -451,14 +451,14 @@ These lines:
 \end{itemize}
 
 The \texttt{SVCompressor} unit model is an extension of the IDAES
-\texttt{Compressor} unit model that defines the Standard Variables that
+\texttt{Compressor} unit model that defines the Independent Variables that
 should be used by \texttt{pyomo-replace}.
 
 For simplicity we will focus on only one unit operation, because it is
 sufficient to show all the functionality of pyomo-replace. The methods
 are the same for flowsheets with more unit models. Once the unit models
 have been added to the flowsheet and connected up, pyomo-replace
-requires that all inlet ports are registered as Standard Variables:
+requires that all inlet ports are registered as Independent Variables:
 
 \begin{verbatim}
 > register_inlet_ports(m.fs)
@@ -470,19 +470,19 @@ have been fully defined and any connections between unit operations have
 been made. Once this method is called, the model should have zero
 degrees of freedom.
 
-Now we can view all the Standard Variables:
+Now we can view all the Independent Variables:
 
 \begin{verbatim}
 > pprint_replacements(m.fs)
 \end{verbatim}
 
-This prints a list of all Standard Variables, and any that are being
+This prints a list of all Independent Variables, and any that are being
 replaced by other variables. As we have not yet replaced any state
 variables, it would simply print a list of all the variables that we
 need to either set a value for, or replace:
 
 \begin{verbatim}
-Unreplaced Standard Variables:
+Unreplaced Independent Variables:
  fs.compressor.work_mechanical
  fs.compressor.efficiency_isentropic
  fs.compressor.inlet.flow_mol
@@ -492,7 +492,7 @@ Unreplaced Standard Variables:
 
 However, we wanted to specify the outlet pressure instead of the
 compressor mechanical work.  Replacing a variable is as simple as calling a function,
-passing the new variable to fix and the state variable to unfix:
+passing the new variable to fix and the Independent Variable to unfix:
 
 \begin{verbatim}
 > replace_state_var(m.fs.compressor.work_mechanical, m.fs.heater.outlet.pressure)
@@ -504,11 +504,11 @@ Now we can run \texttt{pprint\_replacements} again, to show that
 \begin{verbatim}
 > pprint_replacements(m.fs)
 
-Replaced Standard Variables:
-  (Fixed Variable) -> (Replaced State Variable)
+Replaced Independent Variables:
+  (Fixed Variable) -> (Replaced Independent Variable)
   fs.h1.outlet.pressure -> fs.compressor.work_mechanical
 
-Unreplaced Standard Variables in block fs:
+Unreplaced Independent Variables in block fs:
   fs.compressor.efficiency_isentropic
   fs.compressor.inlet.flow_mol
   fs.compressor.inlet.enth_mol
@@ -516,13 +516,13 @@ Unreplaced Standard Variables in block fs:
 \end{verbatim}
 
 You can then set a value for \texttt{outlet.pressure} and all the other
-Standard Variables, and provide a guess for \texttt{ratioP}. This model can
+Independent Variables, and provide a guess for \texttt{ratioP}. This model can
 then be initialized and solved using the standard pyomo and idaes
 libraries.
 
 To those familiar with IDAES, this may appear to be a more complicated
 approach to fixing an outlet variable, as typically you would fix it
-directly rather than worrying about which state variable you are
+directly rather than worrying about which Independent Variable you are
 replacing. However,it provides a natural form of documentation for the model and modelling process,
 as shown above. It also simplifies initialisation and interpretation of the model, as will
 be discussed in \Cref{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}.
@@ -559,7 +559,7 @@ constraints removed is equal to the number of constraints added.
 Properties}\label{calculating-inlet-properties}}
 
 Inlets that are not connected to anything upstream are considered to be
-Standard Variables. They can be replaced by other variables. This is
+Independent Variables. They can be replaced by other variables. This is
 generally fine, but some models are built with the expectation that
 inlet conditions are calculated. For example, the pressure exchanger
 model at \citep{watertap_pressure_exchanger} expects that the inlet flow
@@ -601,8 +601,8 @@ variable replacement methodology: variable replacement could be used to
 fully define the model for an initial solve. Then a set of additional
 variables can be unfixed and the optimisation algorithm can be run.
 
-Additionally, knowing the list of Standard Variables may still provide good
-context for optimisation, as any Standard Variables you unfix are the ones
+Additionally, knowing the list of Independent Variables may still provide good
+context for optimisation, as any Independent Variables you unfix are the ones
 for which you are calculating an optimum value.
 
 
@@ -632,7 +632,7 @@ building equation oriented models from sets of pre-configured equations.
 \centering
 \includegraphics[width=\textwidth]{assets/geothermal-replacement.drawio.png}
 \caption{Flow Diagram of a fully specified Geothermal Power Plant,
-demonstrating which Standard Variables are being replaced.}
+demonstrating which Independent Variables are being replaced.}
 \end{figure}
 
 A model of a geothermal plant, outlined in \citep{severinsen2024digital}
@@ -685,7 +685,7 @@ need to be specified.
 \caption{A model of a tank with valves controlling the inlet and the
 outlet. Properties with an asterisk (*) next to them are not
 time-indexed. The tank outlet pressure is referenced by the PID
-controller, but is not a state variable.}
+controller, but is not an Independent Variable.}
 \end{figure}
 
 A dynamic flowsheet allows us to test a different aspect of our system:
@@ -695,7 +695,7 @@ and outlet valve controlling the flow rate in and out of the tank. The
 flow into the tank is controlled by a PID controller, which is targeting
 a certain outlet pressure within the tank.
 
-Both the valves have two Standard Variables: the valve coefficient, and the
+Both the valves have two Independent Variables: the valve coefficient, and the
 valve opening fraction. However, the valve coefficient is a constant
 property; it cannot be changed throughout the simulation. To indicate
 this, we have included an asterisk (*) next to them. In contrast, the
@@ -729,7 +729,7 @@ opening fraction. This is a simple solution that can be done when the
 PID controller is connected up to the valve opening fraction.
 
 Initial Material Accumulation and Initial Energy Accumulation can be
-treated as additional Standard Variables if it is appropriate. It would be
+treated as additional Independent Variables if it is appropriate. It would be
 feasible to use the replacement logic to replace them with Initial
 Material Holdup and Initial Energy Holdup. However, typically dynamic
 flowsheets start with a steady-state assumption, and all accumulation
@@ -758,15 +758,15 @@ The Ahuora Digital Twin Platform is a web-based process simulation
 environment. It is built using IDAES and Pyomo as the equation-oriented
 modelling libraries as the simulation backend.
 
-Each unit operation has a set of Standard Variables, where the user can
+Each unit operation has a set of Independent Variables, where the user can
 enter a value, and a set of calculated variables, which cannot be
 entered by the user. If a user wants to fix a calculated variable, an
-appropriate state variable has to be chosen and ``replaced''. This makes
-the state variable a ``guess'': the user still needs to enter a value,
+appropriate Independent Variable has to be chosen and ``replaced''. This makes
+the Independent Variable a ``guess'': the user still needs to enter a value,
 but it is shown with no background color, to indicate to the user that
 it will be calculated when the flowsheet is solved. A message tells the
 user what variable is replacing it. The calculated variable then shows
-up like a state variable, with a message to show which variable it is
+up like an Independent Variable, with a message to show which variable it is
 replacing. This ensures the user is informed about which variable is
 being replaced by which.
 
@@ -777,8 +777,8 @@ being replaced by which.
 Platform.}
 \end{figure}
 
-In the example image, the ``Pressure Drop'' state variable is fixed at 0
-kPa. The ``Mechanical Work'' state variable in the Compressor is being
+In the example image, the ``Pressure Drop'' Independent Variable is fixed at 0
+kPa. The ``Mechanical Work'' Independent Variable in the Compressor is being
 replaced by the Pressure at the outlet stream. An initial guess for
 ``Mechanical Work'' may still be entered, which is updated to the
 correct value, which is based on the pressure specified at the outlet,
@@ -795,15 +795,15 @@ user with any direction on how to get started.
 One of the major advantages of Variable Replacement that we have noticed
 in a GUI is that it provides additional context for unit operations. In
 a GUI program, it is very easily to visually show that context by
-styling fixed Standard Variables, guesses, and calculated variables
+styling fixed Independent Variables, guesses, and calculated variables
 differently, and to show the links between variables.
 
 Working with a GUI also means that adding and removing unit operations
 is common, and Variable Replacement provides a sensible way to deal with
 adding or removing unit operations. When a unit operation is added, it's
-Standard Variables and inlet ports are fixed by default to ensure the
+Independent Variables and inlet ports are fixed by default to ensure the
 degrees of freedom are still zero. When a unit operation is removed,
-anything that is replacing it's Standard Variables is also unfixed, and any
+anything that is replacing it's Independent Variables is also unfixed, and any
 inlet ports that were previously connected to the outlet of the unit
 operation are fixed, again keeping the degrees of freedom at zero.
 
@@ -812,7 +812,7 @@ routines, because these are usually specified as python code and can be
 quite complex, so it is out of scope of the project. However, the
 multi-stage initialisation that naturally works with variable
 replacement helps to improve the reliability of solving. As guesses are
-specified for the Standard Variables, these can be used in the
+specified for the Independent Variables, these can be used in the
 initialisation routine. In particular, this enables us to specify any
 set of variables to define the conditions of an inlet stream, whereas
 IDAES does not have initialisation routines for any set of state
@@ -833,7 +833,7 @@ variables and is typically limited to only a certain set of properties.
 \hypertarget{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}{%
 \section{Discussion}\label{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}}
 
-This method of replacing Standard Variables to define a model does not
+This method of replacing Independent Variables to define a model does not
 fundamentally change the model itself. However, specifying a model in
 this way provides some guarantees and useful properties that traditional
 equation-oriented methods lack.
@@ -861,7 +861,7 @@ paradigm in which to reason about equation-oriented systems.
   operation becomes easier.
 \item
   It standardises initialisation routines, as long as guesses are
-  provided for Standard Variables.
+  provided for Independent Variables.
 \item
   The coupling of variables adds a level of interpretability to the
   model, which makes it easier to maintain and manipulate models.
@@ -887,13 +887,13 @@ first recommended step to diagnose problems \citep{lee2024model}. Newer
 analysis methods, such as Dulmage-Mendelson Decomposition do make this
 simpler, but it is still an iterative process.
 
-Using a Variable Replacement approach, a set of Standard Variables would be
+Using a Variable Replacement approach, a set of Independent Variables would be
 already defined by the model library, so the user would not need to
 square the model. There are zero degrees of freedom \emph{by
 definition}. If a problem requires a variable to be fixed that is not a
-state variable, an appropriate\footnote{i.e A state variable that would
+Independent Variable, an appropriate\footnote{i.e an Independent Variable that would
   be part of the Dulmage-Mendelson over-constrained set if the other
-  variable was fixed and nothing was unfixed} state variable must be
+  variable was fixed and nothing was unfixed} Independent Variable must be
 unfixed too. As we add a degree of freedom every time we remove a degree
 of freedom, they `cancel out' guaranteeing that we will continue to have
 a square model. This eliminates an entire class of errors with practical
@@ -904,12 +904,12 @@ application of EOMs.
 analysis}\label{switching-between-different-types-of-analysis}}
 
 We have previously discussed using the car example that some state
-variables are design Standard Variables (i.e \(k\)), and some are
+variables are design Independent Variables (i.e \(k\)), and some are
 manipulated variables (i.e \(y\)), and all other variables are dependent
 (i.e \(v\)).
 
 A design problem would involve finding an appropriate for the design
-Standard Variables, by calculating a desired \(k\). In an operation case,
+Independent Variables, by calculating a desired \(k\). In an operation case,
 \(k\) is fixed and known, but an appropriate value of \(y\) may be
 required. To turn a design case into an operation case, all that is
 required is to fix all the design variables, which can be done un-doing
@@ -921,7 +921,7 @@ Likewise, a robustness test typically involves fixing only the decision
 variables (both design and operation) and calculating how sensitive the
 dependent variables are to changes. Again, this is easy to do in the
 variable replacement framework by simply undoing all replacements, as
-the decision variables are the Standard Variables.
+the decision variables are the Independent Variables.
 
 \hypertarget{simplified-initialisation}{%
 \subsection{\texorpdfstring{Simplified Initialisation
@@ -941,19 +941,19 @@ problems.
 variables to avoid the need for different initialisation methods.}
 \end{figure}
 
-The concept of ``Standard Variables'' can simplify this process, by
+The concept of ``Independent Variables'' can simplify this process, by
 splitting the initialisation into two parts. First, the initialisation
 methods can calculate initial values of all variables based on the
-values or guesses of the Standard Variables. Then, once the model has been
-initialised in a sensible location, any Standard Variables that are
+values or guesses of the Independent Variables. Then, once the model has been
+initialised in a sensible location, any Independent Variables that are
 replaced (i.e, were guesses) can be unfixed, and the variables that are
 replacing them can be fixed back to their original values. The block can
 then be re-solved to calculate the correct value of any ``guessed''
-state variable.
+Independent Variable.
 
 This limits the logic in initialisation routines, as only one
 initialisation method is required be required. It does require that
-initial guesses are provided for all the Standard Variables, but this is a
+initial guesses are provided for all the Independent Variables, but this is a
 reasonable tradeoff. This standardises the initialisation process to
 work across all sets of fixed variables, while still giving the model
 library developer freedom to develop whatever initialisation method they
@@ -1048,7 +1048,7 @@ developers find this invaluable in helping to understand the system.
 The replacement system works in a similar manner, as it bakes in more
 context to the model. Similar to a type system in a programming
 language, this increases the model's interpretability and
-maintainability. Technically, it doesn't matter which state variable a
+maintainability. Technically, it doesn't matter which Independent Variable a
 model is replacing; just which variables are fixed and which are
 unfixed. However, having that context makes understanding \emph{why} a
 variable needs to be fixed much clearer.
@@ -1072,7 +1072,7 @@ include the following variables as shown in Figure \ref{compressor-dof}.
 \end{figure}
 
 The equivalent model, using a variable replacement approach, would have
-Standard Variables already defined by the developer of the Compressor Unit
+Independent Variables already defined by the developer of the Compressor Unit
 Model (Figure \ref{compressor-sv-defined}).
 
 \begin{figure}
@@ -1099,7 +1099,7 @@ instead of the mechanical work (Figure
 \end{figure}
 
 The equivalent model, using a variable replacement approach, would
-require explicitly replacing the mechanical work state variable. This
+require explicitly replacing the mechanical work Independent Variable. This
 would create a link between the two variables to show what Mechanical
 work was replaced by (Figure \ref{compressor-replacement}).
 
@@ -1165,11 +1165,11 @@ are removing multiple variables and constraints simultaneously.
 \centering
 \includegraphics[width=\textwidth]{assets/deleting-replacement.drawio.png}
 \caption{Deleting the pump from a flowsheet is handled elegantly as the
-fixed variables are coupled to specific Standard Variables.}
+fixed variables are coupled to specific Independent Variables.}
 \end{figure}
 
 Consider this model of a pump connected to a heater, with all the state
-variables defined. The inlet conditions are Standard Variables, and so is
+variables defined. The inlet conditions are Independent Variables, and so is
 the mechanical work of the pump, and the heat duty of the heater.
 However, the mechanical work and heat duty are replaced by the
 temperature and pressure of the outlet; i.e the temperature and pressure
@@ -1211,7 +1211,7 @@ on what variables to remove. There are two options:
 
 Both of these options require manual intervention from the modeller, as
 there is no clear path to maintain a solvable model. In comparison, when
-fixed variables are coupled to a set of Standard Variables, it is easy to
+fixed variables are coupled to a set of Independent Variables, it is easy to
 see when to unfix the variable: when the state var it is connected to is
 removed.
 
@@ -1240,13 +1240,13 @@ Variable replacement provides an alternative way of maintaining a square
 model in an equation-oriented framework, particularly when scaling up to
 larger EOMs.
 
-If Standard Variables are defined on each block added to a model, those who
+If Independent Variables are defined on each block added to a model, those who
 use the model do not need to first square the problem. Degrees of
 freedom are kept at zero through any changes that are made to the
-flowsheet. The coupling between Standard Variables and fixed variables
+flowsheet. The coupling between Independent Variables and fixed variables
 provides a more interpretable way of reasoning about the model, bringing
 the relationships between variables to the forefront. Additionally, a
-set of Standard Variables and initial guesses for them makes it simpler to
+set of Independent Variables and initial guesses for them makes it simpler to
 build initialisation and scaling methods. The Ahuora Digital Twin
 Platform provides a case study on how this is beneficial, particularly
 when using a GUI tool for modelling.
