@@ -31,23 +31,27 @@ know what is the best way to specify all
 degrees of freedom in the model. Combining multiple models and adding additional
 constraints further complicates the issue.
 
-This article discusses how treating equation-oriented models more like
-explicitly defined systems makes it simpler for a modeller to build,
-initialise, and reason about. We propose that the model developer should explicitly define 
-which variables in the model are design variables, which are operating variables, and which are dependent variables.
-Design and operating variables are fixed by default. As required, design and operating variables can be replaced
-by dependent variables in the equation oriented model.
+This article focuses on a modelling workflow and software abstraction
+for specification management in EOMs. We propose that the model developer should
+explicitly encode specification intent: which variables in the model are
+design variables, which are operating variables, and which are dependent
+variables. Design and operating variables are fixed by default. As
+required, design and operating variables can be replaced by dependent
+variables in the equation-oriented model.
 
-While this approach is usually followed by model developers in practice, it is not formally included in the design
-of most equation-oriented modelling frameworks. By formally including it, the AML itself can provide guarantees 
-about the behaviour of the system, and it becomes easier to build tools on top of 
-the modelling framework to help with model construction and initialisation.
+We refer to the resulting structure as a model's specification topology:
+the relationship between the variables fixed by default and the
+variables that may replace them for a particular study. This topology is
+often managed informally in practice, but is not usually represented
+explicitly in equation-oriented modelling frameworks. By making it
+explicit, the AML can better preserve specification consistency and it
+becomes easier to build tools on top of the modelling framework to help
+with model construction, interpretation, and initialisation.
 
-
-Our library, pyomo-replace, demonstrates some
-advantages of this approach in the Pyomo and IDAES
-\citep{miller2018next} ecosystem, and the Ahuora Platform provides a
-case study of this approach in a graphical application.
+Our library, pyomo-replace, demonstrates these ideas in the Pyomo and
+IDAES \citep{miller2018next} ecosystem, and the Ahuora Platform
+provides a case study of this structured specification-management
+approach in a graphical application.
 
 \hypertarget{literature-review}{%
 \subsection{Context}\label{literature-review}}
@@ -163,7 +167,7 @@ Aspen Plus uses the Design Spec feature to allow an input to be manipulated to
 reach a target output, simulating the steady state effect of a controller \citep{aspenplus111_userguide}.
 This can be used with both sequential modular and equation-oriented models, 
 but is not required for equation-oriented models as they are implicitly defined. 
-Similar features are avaliable in other process modelling software such as gPROMS and DWSIM
+Similar features are available in other process modelling software such as gPROMS and DWSIM
 \citep{amador2019introduction} \citep{tangsriwong2020modeling}.
 
 \hypertarget{initialising-a-model}{%
@@ -175,7 +179,7 @@ including warm starts from a previous solution, linear or simplified approximati
 solving initially at a simpler point, or structural decomposition \citep{SAFDARNEJAD201539}.
 
 The exact method often depends on the model structure. The IDAES process modelling framework
-defines a seperate initialisation routine for each unit model that is added \citep{lee2021idaes}. However, as there
+defines a separate initialisation routine for each unit model that is added \citep{lee2021idaes}. However, as there
 are so many different ways of fully specifying a unit model, these initialisation methods quickly become complicated
 as they try to handle many different cases. Even so, if a user chooses to fully specify 
 the model in a way that the initialisation method does not expect, it may fail. 
@@ -198,13 +202,17 @@ While there are certain categories of variables that are typically fixed in diff
 \hypertarget{method}{%
 \section{Materials \& Methods}\label{method}}
 
-The implicit formulation of EOMs means there is much freedom in how they are defined.
-However, the expressiveness makes it much harder to reason about the structure or 
-automate parts of model construction such as initialisation. When multiple EOMs are 
-combined using principles of abstraction, the expressiveness of
-the model compounds.
-In software systems, providing restrictions on what you can do allows you to provide guarantees about
-the behaviour of the system. 
+The implicit formulation of EOMs means there is much freedom in how
+they are defined. However, that same expressiveness makes it harder to
+reason about specification structure or automate parts of model
+construction such as initialisation. When multiple EOMs are combined
+using principles of abstraction, this challenge compounds.
+
+Our aim is therefore not to alter the mathematics of the underlying
+model, but to add an explicit layer for structured specification
+management. In software systems, restricting how an interface may be
+used can make behaviour easier to understand and automate. We apply the
+same idea here to model specification.
 
 We propose that each submodel be defined in a specific way:
 
@@ -214,12 +222,21 @@ We propose that each submodel be defined in a specific way:
   \item if an Initial Variable is unfixed, an initial guess must be provided for it.
 \end{itemize}
 
-In essense, we treat the EOM as if it were explicitly defined. Note that the model itself does not need to be explicitly defined,
-but in the user interface level it is treated as if it were.
+In essence, we manage specification as if the EOM exposed an explicit
+interface, even though the underlying model remains implicit. The goal
+is to make specification changes interpretable and automatable at the
+workflow level rather than to reformulate the model itself.
 
-This leads to some helpful emergent properties that makes modelling large systems easier. 
-Degrees of freedom are no longer a problem, because the Initial Variables fully define the model, and for any variable that is fixed, a design or operating variable is unfixed, maintaining the degrees of freedom at zero.
-Initialisation becomes easier, as initialisation methods only need to be defined for the Initial Variables. To convert a model from a design to operation to performance rating model, you can simply remove the replacements on the design or operating variables to re-fix them, while maintaining a fully defined model.
+This leads to some helpful emergent properties that make modelling
+large systems easier. The manual burden of degree-of-freedom management
+is reduced because the Initial Variables fully define the baseline
+specification, and for any additional variable that is fixed, a design
+or operating variable is unfixed to preserve the specification count.
+Initialisation becomes easier, as initialisation methods only need to be
+defined for the Initial Variables. To convert a model from a design to
+operation to performance-rating study, the modeller can remove
+replacements on the design or operating variables to re-fix them while
+maintaining a fully defined model.
 
 \hypertarget{formal-definition-of-variable-replacement-methodology}{%
 \subsection{Formal Definition of Variable Replacement
@@ -434,7 +451,7 @@ constant set of indexes. This provides a convenient grouping of
 variables.
 
 One Indexed Variable may be replaced by another Indexed Variable so long
-as the size of the indexed variables (the number of items in it's index
+as the size of the indexed variables (the number of items in its index
 set) are the same, and the model is still structurally sound afterwards;
 i.e there are no over or under-constrained variable sets. This is a
 convenient abstraction as it avoids having to replace each individual
@@ -498,15 +515,16 @@ for which you are calculating an optimum value.
 \hypertarget{case-studies}{%
 \section{Results}\label{case-studies}}
 
-To demonstrate the usefulness of a these methods in designing process models,
+To demonstrate the usefulness of this structured specification-management
+approach in process models,
 this section includes three examples.
 The first discusses a geothermal plant, showing how Variable Replacement
-makes it easier to keep track of the sources of variability in the
+makes it easier to keep track of specification intent in the
 system, and switch between design, operation, and controllability use cases. 
 The second discusses a Dynamic Tank, showing that Variable
 Replacement can also work with a time-based problem. The third discusses how
 variable replacement makes it easier to create User Interfaces (UIs) for
-building equation oriented models from sets of pre-configured equations.
+building equation-oriented models from sets of pre-configured equations.
 
 
 \hypertarget{geothermal-power-plant}{%
@@ -660,7 +678,7 @@ Unreplaced state variables in block fs:
 \end{verbatim}
 
 This also shows which variables are tagged as design variables or operating variables.
-Inlet variables are tagged seperately as they don't fit neatly into either category. 
+Inlet variables are tagged separately as they don't fit neatly into either category. 
 Additional categories of variables can be added if required.
 
 We can then choose to replace any of the Initial Variables with other variables in the model.
@@ -861,7 +879,7 @@ user with any direction on how to get started.
 
 One of the major advantages of Variable Replacement that we have noticed
 in a GUI is that it provides additional context for unit operations. In
-a GUI program, it is very easily to visually show that context by
+a GUI program, it is very easy to visually show that context by
 styling fixed Initial Variables, guesses, and calculated variables
 differently, and to show the links between variables.
 
@@ -900,10 +918,13 @@ variables and is typically limited to only a certain set of properties.
 \hypertarget{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}{%
 \section{Discussion}\label{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}}
 
-This method of replacing Initial Variables to define a model does not
-fundamentally change the model itself. However, specifying a model in
-this way provides some guarantees and useful properties that traditional
-equation-oriented methods lack.
+This method of replacing Initial Variables does not fundamentally change
+the underlying model equations, solver, or structural analysis.
+Technically, it is still based on fixing one variable and unfixing
+another. The contribution is that this action is elevated into an
+explicit specification-management layer that records intent, preserves
+consistency, and makes specification changes easier to interpret and
+automate.
 
 A useful analogy may be in the study of programming language theory.
 Functional and Imperative programming languages are both turing
@@ -914,15 +935,16 @@ a program, but they do make it simpler to validate and reason about the
 program.
 
 Variable replacement enforces a degree of regularity in the blocks that
-make up models, and in the overall structure. It provides a different
-paradigm in which to reason about equation-oriented systems.
+make up models, and in the overall structure. In that sense, it offers
+a more structured way to reason about specification topology in
+equation-oriented systems.
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  It fundamentally removes the problem of Degrees of Freedom when
-  defining a model.
+  It reduces the manual burden of Degrees of Freedom management when
+  defining and modifying a model.
 \item
   Switching between different types of analysis for design versus
   operation becomes easier.
@@ -931,12 +953,13 @@ paradigm in which to reason about equation-oriented systems.
   provided for Initial Variables.
 \item
   The coupling of variables adds a level of interpretability to the
-  model, which makes it easier to maintain and manipulate models.
+  model's specification, which makes it easier to maintain and
+  manipulate models.
 \end{enumerate}
 
 \hypertarget{removing-the-problem-of-squaring-a-model}{%
-\subsection{Removing the problem of Squaring a
-Model}\label{removing-the-problem-of-squaring-a-model}}
+\subsection{Reducing the manual burden of squaring a
+model}\label{removing-the-problem-of-squaring-a-model}}
 
 To have a square model, you must have the same number of unknowns, or
 unfixed variables, as equations, i.e
@@ -954,17 +977,18 @@ first recommended step to diagnose problems \citep{lee2024model}. Newer
 analysis methods, such as Dulmage-Mendelson Decomposition do make this
 simpler, but it is still an iterative process.
 
-Using a Variable Replacement approach, a set of Initial Variables would be
-already defined by the model library, so the user would not need to
-square the model. There are zero degrees of freedom \emph{by
-definition}. If a problem requires a variable to be fixed that is not a
-Initial Variable, an appropriate\footnote{i.e an Initial Variable that would
-  be part of the Dulmage-Mendelson over-constrained set if the other
-  variable was fixed and nothing was unfixed} Initial Variable must be
-unfixed too. As we add a degree of freedom every time we remove a degree
-of freedom, they `cancel out' guaranteeing that we will continue to have
-a square model. This eliminates an entire class of errors with practical
-application of EOMs.
+Using a Variable Replacement approach, a set of Initial Variables would
+already be defined by the model library, so the user would not need to
+manually square the baseline model. There are zero degrees of freedom
+\emph{by construction} for that baseline specification. If a problem
+requires a variable to be fixed that is not an Initial Variable, an
+appropriate\footnote{i.e an Initial Variable that would be part of the
+  Dulmage-Mendelson over-constrained set if the other variable was
+  fixed and nothing was unfixed} Initial Variable must be unfixed too.
+Because the workflow requires adding and removing one specification
+together, it preserves a square model through the replacement process.
+In practice this removes much of the trial-and-error associated with
+manual specification changes in EOMs.
 
 \hypertarget{switching-between-different-types-of-analysis}{%
 \subsection{Switching between different types of
@@ -1322,7 +1346,7 @@ build initialisation and scaling methods. The Ahuora Digital Twin
 Platform provides a case study on how this is beneficial, particularly
 when using a GUI tool for modelling.
 
-While this paper introduces Variable Replacement as a method and purview
+While this paper introduces Variable Replacement as a method and preview
 its potential benefits in the chemical engineering domain, further research is required to systematically
 evaluate the interpretability and initialisation advantages across
 different types of EOMs. Nonetheless, these techniques hold promise to
