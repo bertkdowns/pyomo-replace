@@ -242,14 +242,17 @@ maintaining a fully defined model.
 \subsection{Formal Definition of Variable Replacement
 Methodology}\label{formal-definition-of-variable-replacement-methodology}}
 
-This section outlines how Variable Replacement is defined on an EOM,
-borrowing terminology and concepts from the Pyomo equation-oriented
-modelling ecosystem.
+This section provides an operational formalisation of Variable
+Replacement, borrowing terminology and concepts from the Pyomo
+equation-oriented modelling ecosystem. The purpose is not to present a
+complete mathematical theory of solvability or structural analysis.
+Rather, it gives a lightweight description of the bookkeeping required
+to manage specifications consistently in practice.
 
 \hypertarget{mathematical-definition}{%
 \subsubsection{Mathematical Definition}\label{mathematical-definition}}
 
-An EOM be viewed mathematically as
+We represent an EOM operationally as
 
 \[
 \mathcal{M} = (\hat{x}, C, F)
@@ -261,38 +264,41 @@ where:
 \(\hat{x} \in \mathbb{R}^n\),
 
 \(C = \{c_i: i = 1,...,m\}\) is a set of \(m\) functions such that
-\(c_i(\hat{x}) = 0\) for all valid solutions of \(x\),
+\(c_i(\hat{x}) = 0\) describes the equation-oriented model,
 
 \(F = \{f_i: i \in S \}, S \subseteq \{1,...,n\}\) is an additional set of
-functions of the form \(f_i(\hat{x}):= x_i - \bar{x}_i\), such that
-\(f_i(\hat{x}) = 0\) for all valid solutions of \(x\), fixing the
-variable \(x_i\) to the value \(\bar{x_i}\).
+functions of the form \(f_i(\hat{x}):= x_i - \bar{x}_i\), representing
+the current specification by fixing variable \(x_i\) to the value
+\(\bar{x_i}\).
 
-The set of feasible solutions can be given as:
+The corresponding specified system is
 
 \[
-\mathcal{S} = \{C(\hat{x}) = 0, F(\hat{x}) = 0 \}.
+\{c(\hat{x}) = 0 \; \forall c \in C,\; f(\hat{x}) = 0 \; \forall f \in F\}.
 \]
 
-In other words, we need to find \(x\) such that
-\(c(\hat{x}) = 0 \; \forall c \in C\) and \(f(\hat{x}) = 0 \; \forall f \in F\).
+In this paper, \(F\) should be understood as specification metadata
+expressed in equation form. We do not claim that the cardinality of
+\(C\) and \(F\) alone is sufficient to establish well-posedness,
+independence, structural nonsingularity, or feasibility for every
+possible EOM. Those issues still depend on the underlying model and are
+handled using standard modelling and diagnostic tools.
 
 \hypertarget{degrees-of-freedom}{%
 \subsubsection{Degrees of freedom}\label{degrees-of-freedom}}
 
-The number of degrees of freedom of the model is defined as:
+For operational purposes, we use the usual counting heuristic
 
 \[
 \text{DoF} = |\hat{x}| - |F| - |C| 
 \]
 
-Or the number of variables minus the number of fixed variables minus the
-number of constraints.
-
-If all constraints are independent, when DoF is zero there is an exact
-solution. If there are more constraints, the model is over-defined and
-degrees of freedom is negative. If there are more variables, then there
-are a range of possible solutions.
+that is, the number of variables minus the number of fixed variables
+minus the number of constraints. This is used here as a practical guide
+for specification management, not as a rigorous certificate of
+solvability. In particular, zero counted degrees of freedom does not by
+itself rule out redundancy, algebraic degeneracy, structural
+singularity, or nonlinear infeasibility.
 
 \hypertarget{replacement}{%
 \subsubsection{Replacement}\label{replacement}}
@@ -305,36 +311,53 @@ model are fixed. We start with a fully defined model
 DoF(\mathcal{M}) = |\hat{x}| - |F| - |C|  = 0
 \]
 
-Fixing a variable \(V_i\) at index \(i\) involves adding a constraint
-\(f_i\) to \(F\). We define \(F' = F \cup \{f_i\}\). However, if this is
-used in a model, \(DoF((\hat{x},C,F')) = -1\) so the model would be
-over-defined and potentially have no solutions.
+Suppose we want to fix a new variable \(x_i\). Operationally, this means
+adding a new specification equation \(f_i\) to \(F\), giving
+\(F' = F \cup \{f_i\}\). On the counting heuristic above,
+\(DoF((\hat{x},C,F')) = -1\), indicating that the model is now
+over-specified.
 
-To solve this, we also choose an existing fixed variable to unfix, by
-removing it's constraint \(f_j\) from \(F\). This gives us a new set of
-constraints
+To maintain the previous specification count, we also choose an
+existing specification equation \(f_j \in F\) to remove. This gives a
+new specification set
 
 \[
-F_{new} = (C \backslash \{f_j\}) \cup \{f_i\}
+F_{new} = (F \backslash \{f_j\}) \cup \{f_i\}
 \]
 
-and a new model
+and a new operational description
 
 \[
 \mathcal{M}_{new} = (\hat{x},C,F_{new})
 \]
 
-that maintains the condition that \(DoF(\mathcal{M}_{new}) = 0\).
+that restores the counted degrees of freedom to zero.
+
+Note that choosing a suitable \(f_j\) still requires domain knowledge
+or structural diagnostics to avoid a poor or infeasible specification.
+Variable Replacement does not remove that requirement; it makes the
+replacement step explicit and traceable.
 
 \hypertarget{repeated-replacement}{%
 \subsubsection{Repeated Replacement}\label{repeated-replacement}}
 
-As the result of a replacement is still an EOM, the process can be repeated. Each time it is repeated, \(\mathcal{F}_{i}\) is updated to \(\mathcal{F}_{i+1}\). This gradually replaces the original set of fixed variables (\(\mathcal{F}\), also called the Canonical Variables) with a new set of fixed variables (\(\mathcal{F}_{replaced}\)). 
+As the result of a replacement is still an EOM, the process can be
+repeated. Each time it is repeated, \(\mathcal{F}_{i}\) is updated to
+\(\mathcal{F}_{i+1}\). This gradually replaces the original set of
+fixed variables (\(\mathcal{F}\), also called the Canonical Variables)
+with a new set of fixed variables (\(\mathcal{F}_{replaced}\)).
 
 \hypertarget{initialisation-of-repeated-replacement}{%
 \subsubsection{Initialisation of Models}\label{initialisation-of-repeated-replacement}}
 
-Initalisation methods can be written to calculate initial values for all variables based on the canonical set of fixed variables (\(\mathcal{F}\)). After the initialisation method is run, the model can be solved with the new set of fixed variables (\(\mathcal{F}_{replaced}\)) to calculate the correct values of any variables that were originally fixed. This allows the same initialisation method to be used regardless of which variables are fixed as long as an initial guess is provided for the Canonical Variables.
+Initialisation methods can be written to calculate initial values for
+all variables based on the canonical set of fixed variables
+\(\mathcal{F}\). After the initialisation method is run, the model can
+be solved with the new set of fixed variables \(\mathcal{F}_{replaced}\)
+to calculate the correct values of any variables that were originally
+fixed. This allows the same initialisation method to be used regardless
+of which variables are fixed as long as an initial guess is provided for
+the Canonical Variables.
 
 \hypertarget{design-and-operation-variables}{
 \subsubsection{A method for switching between design, performance rating, and operation case studies}\label{design-and-operation-variables}}
