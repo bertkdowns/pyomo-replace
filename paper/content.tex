@@ -416,117 +416,6 @@ If a variable is ever unfixed, the Initial Variable it replaced
 must be fixed again.
 
 
-\hypertarget{an-example-in-idaes.}{%
-\subsubsection{An example in IDAES.}\label{an-example-in-idaes.}}
-
-To show how pyomo-replace demonstrates the replacement logic, we will
-consider a simple example of a heater, where the inlet properties are
-specified and the outlet temperature is specified, and the heat duty is
-calculated from the outlet temperature.
-
-First we must define the basic structure:
-
-\begin{verbatim}
-> m = pyo.ConcreteModel()
-> m.fs = FlowsheetBlock(dynamic=False)
-> m.fs.pp = iapws95.Iapws95ParameterBlock()
-> m.fs.compressor = SVCompressor(property_package=m.fs.pp)
-\end{verbatim}
-
-These lines:
-
-\begin{itemize}
-\tightlist
-\item
-  Create a new EOM in the Pyomo Framework
-\item
-  Add a IDAES Flowsheet into the EOM (This always required when building
-  models with IDAES)
-\item
-  Specify the fluid property package to model water, using the IAPWS95
-  specification \citep{wagner2002iapws}
-\item
-  Add a Compressor unit operation to the flowsheet, using the IAPWS95
-  property package to model the properties of the water.
-\end{itemize}
-
-The \texttt{SVCompressor} unit model is an extension of the IDAES
-\texttt{Compressor} unit model that defines the Initial Variables that
-should be used by \texttt{pyomo-replace}.
-
-For simplicity we will focus on only one unit operation, because it is
-sufficient to show all the functionality of pyomo-replace. The methods
-are the same for flowsheets with more unit models. Once the unit models
-have been added to the flowsheet and connected up, pyomo-replace
-requires that all inlet ports are registered as Initial Variables:
-
-\begin{verbatim}
-> register_inlet_ports(m.fs)
-\end{verbatim}
-
-This registers the properties of all inlet ports that do not have
-another model upstream as state vars. This is done after the unit models
-have been fully defined and any connections between unit operations have
-been made. Once this method is called, the model should have zero
-degrees of freedom.
-
-Now we can view all the Initial Variables:
-
-\begin{verbatim}
-> pprint_replacements(m.fs)
-\end{verbatim}
-
-This prints a list of all Initial Variables, and any that are being
-replaced by other variables. As we have not yet replaced any state
-variables, it would simply print a list of all the variables that we
-need to either set a value for, or replace:
-
-\begin{verbatim}
-Unreplaced Initial Variables:
- fs.compressor.work_mechanical
- fs.compressor.efficiency_isentropic
- fs.compressor.inlet.flow_mol
- fs.compressor.inlet.enth_mol
- fs.compressor.inlet.pressure
-\end{verbatim}
-
-However, we wanted to specify the outlet pressure instead of the
-compressor mechanical work.  Replacing a variable is as simple as calling a function,
-passing the new variable to fix and the Initial Variable to unfix:
-
-\begin{verbatim}
-> replace_state_var(m.fs.compressor.work_mechanical, m.fs.heater.outlet.pressure)
-\end{verbatim}
-
-Now we can run \texttt{pprint\_replacements} again, to show that
-\texttt{work\_mechanical} has been replaced by \texttt{outlet.pressure}.
-
-\begin{verbatim}
-> pprint_replacements(m.fs)
-
-Replaced Initial Variables:
-  (Fixed Variable) -> (Replaced Initial Variable)
-  fs.h1.outlet.pressure -> fs.compressor.work_mechanical
-
-Unreplaced Initial Variables in block fs:
-  fs.compressor.efficiency_isentropic
-  fs.compressor.inlet.flow_mol
-  fs.compressor.inlet.enth_mol
-  fs.compressor.inlet.pressure
-\end{verbatim}
-
-You can then set a value for \texttt{outlet.pressure} and all the other
-Initial Variables, and provide a guess for \texttt{ratioP}. This model can
-then be initialized and solved using the standard pyomo and idaes
-libraries.
-
-To those familiar with IDAES, this may appear to be a more complicated
-approach to fixing an outlet variable, as typically you would fix it
-directly rather than worrying about which Initial Variable you are
-replacing. However,it provides a natural form of documentation for the model and modelling process,
-as shown above. It also simplifies initialisation and interpretation of the model, as will
-be discussed in \Cref{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}.
-
 \hypertarget{special-cases-for-integrating-pyomo-replace-with-the-idaes-framework}{%
 \subsection{Special cases for integrating Pyomo-Replace with the IDAES
 Framework}\label{special-cases-for-integrating-pyomo-replace-with-the-idaes-framework}}
@@ -606,13 +495,6 @@ context for optimisation, as any Initial Variables you unfix are the ones
 for which you are calculating an optimum value.
 
 
-
-
-
-
-
-
-
 \hypertarget{case-studies}{%
 \section{Results}\label{case-studies}}
 
@@ -620,13 +502,19 @@ To demonstrate the usefulness of a these methods in designing process models,
 this section includes three examples.
 The first discusses a geothermal plant, showing how Variable Replacement
 makes it easier to keep track of the sources of variability in the
-system. The second discusses a Dynamic Tank, showing how Variable
-Replacement can work with a time-based problem. The third discusses how
+system, and switch between design, operation, and controllability use cases. 
+The second discusses a Dynamic Tank, showing that Variable
+Replacement can also work with a time-based problem. The third discusses how
 variable replacement makes it easier to create User Interfaces (UIs) for
 building equation oriented models from sets of pre-configured equations.
 
+
 \hypertarget{geothermal-power-plant}{%
 \subsection{Geothermal Power Plant}\label{geothermal-power-plant}}
+
+
+To show how pyomo-replace demonstrates the replacement logic, we will
+consider a geothermal power plant flowsheet \citep{severinsen2024digital}.
 
 \begin{figure}
 \centering
@@ -635,8 +523,7 @@ building equation oriented models from sets of pre-configured equations.
 demonstrating which Initial Variables are being replaced.}
 \end{figure}
 
-A model of a geothermal plant, outlined in \citep{severinsen2024digital}
-is shown here as a test case. This model includes four heat exchangers
+This model includes four heat exchangers
 (the condenser, recouperator, preheater, and vaporiser), one turbine,
 and one pump. Each of these unit operations contribute one or two
 degrees of freedom: The heat exchangers need Area and Heat Transfer
@@ -658,23 +545,203 @@ properties specified.
 Those familiar with control systems may note that the variable
 replacement approach for the pump looks similar to the control scheme of
 a pump in a P\&ID Diagram, where the amount of work the pump does is
-controlled by a PID tuner that reads from a pressure sensor. The concept
-is not exactly analogous for heat exchangers, where the sizing is
-pre-determined, but the parallels may be helpful in gaining an intuition
-for how degrees of freedom replacement behaves.
+controlled by a PID tuner that reads from a pressure sensor. These are replacements that replace operating variables.
+The heat exchangers are specified by their outlet temperatures, which replace the
+heat transfer coefficient design variable.
 
-Of particular note is the flow in the brine inlet. The factory does not
-record the brine flow in, however it does record the total flow out.
-Thus, we can replace the Brine inlet flow with the Total flow, and the
-Brine flow will be back-calculated. Note that the brine outlet flow is
-specified much later downstream from the brine inlet. When this happens
-in conventional Degree of Freedom replacement systems, it can be very
-hard to understand why the brine outlet flow needs to be specified. By
-using a Variable Replacement approach, it is immediately obvious.
-Specifying stream properties downstream of an operation, sometimes
-significantly downstream, is a common practice when modelling, and
-Variable replacement makes it easier to understand why these properties
-need to be specified.
+We first construct the flowsheet in IDAES, the same way as any other IDAES model:
+
+\begin{verbatim}
+> m = pyo.ConcreteModel()
+> m.fs = FlowsheetBlock(dynamic=False)
+> m.fs.pp = iapws95.Iapws95ParameterBlock()
+> m.fs.butane = build_package("helmholtz",["n-butane"],["Liq","Vap"])
+\end{verbatim}
+
+These lines:
+
+\begin{itemize}
+\tightlist
+\item
+  Create a new EOM in the Pyomo Framework
+\item
+  Add a IDAES Flowsheet into the EOM (This always required when building
+  models with IDAES)
+\item
+  Specify the fluid property package to model water, using the IAPWS95
+  specification \citep{wagner2002iapws}
+\item
+  Specify the fluid property package to model n-butane, using a Helmholtz
+  energy formulation \citep{bucker2006reference}
+\end{itemize}
+
+Then unit models are added to the flowsheet and connected together as normal in IDAES. However,
+the unit models are imported from the pyomo-replace library, which have already defined the Initial Variables 
+and appropriate initialisation methods to work with them. The models also have tagged which variables are design variables,
+and which variables are operating variables.
+
+
+\begin{verbatim}
+> m.fs.preheater = SVHeatExchanger(hot_side={
+>     "property_package": m.fs.water,
+>     "has_pressure_change": False
+> }, cold_side={
+>     "property_package": m.fs.butane,
+>     "has_pressure_change": False
+> })
+... continued for the rest of the flowsheet
+\end{verbatim}
+
+Arcs are also added to connect the unit models together, as normal in IDAES. 
+This creates the necessary equality constraints between the variables 
+on the inlet and outlet ports of the unit models.
+
+\begin{verbatim}
+> m.fs.preheater_vaporizer = Arc(
+>    source=m.fs.preheater.cold_side_outlet, 
+>    destination=m.fs.vaporizer.cold_side_inlet
+> )
+... continued for the rest of the flowsheet
+\end{verbatim}
+
+Once the unit models
+have been added to the flowsheet and connected up, pyomo-replace
+requires that all inlet ports are registered as Initial Variables:
+
+\begin{verbatim}
+> register_inlet_ports(m.fs)
+\end{verbatim}
+
+This registers the properties of all inlet ports that do not have
+another model upstream as state vars. This is done after the unit models
+have been fully defined and any connections between unit operations have
+been made. Once this method is called, the model should have zero
+degrees of freedom.
+
+Typically, at this point in a normal IDAES model, there would be many degrees of freedom and
+the user would need to figure out which variables to fix to make the model square.
+However, in pyomo-replace, the model is already square, and the user can simply
+set values for the Initial Variables, or replace them with other variables as required.
+
+Pyomo-replace provides a method to print the list of Initial Variables and any replacements that have been made:
+
+\begin{verbatim}
+> pprint_replacements(m.fs)
+\end{verbatim}
+
+This prints a list of all Initial Variables, and any that are being
+replaced by other variables. As we have not yet replaced any state
+variables, it would simply print a list of all the variables that we
+need to either set a value for, or replace:
+
+\begin{verbatim}
+Unreplaced state variables in block fs:
+  fs.preheater.overall_heat_transfer_coefficient  (design)
+  fs.preheater.area  (design)
+  fs.vaporizer.overall_heat_transfer_coefficient  (design)
+  fs.vaporizer.area  (design)
+  fs.vaporizer._flow_mol_hot_side_inlet_ref  (inlet)
+  fs.vaporizer._enth_mol_hot_side_inlet_ref  (inlet)
+  fs.vaporizer._pressure_hot_side_inlet_ref  (inlet)
+  fs.brine_mixer._flow_mol_inlet_2_ref  (inlet)
+  fs.brine_mixer._enth_mol_inlet_2_ref  (inlet)
+  fs.brine_mixer._pressure_inlet_2_ref  (inlet)
+  fs.turbine.work_mechanical  (operation)
+  fs.turbine.efficiency_isentropic  (design)
+  fs.recuperator.overall_heat_transfer_coefficient  (design)
+  fs.recuperator.area  (design)
+  fs.condenser.overall_heat_transfer_coefficient  (design)
+  fs.condenser.area  (design)
+  fs.condenser._flow_mol_cold_side_inlet_ref  (inlet)
+  fs.condenser._enth_mol_cold_side_inlet_ref  (inlet)
+  fs.condenser._pressure_cold_side_inlet_ref  (inlet)
+  fs.pump.work_mechanical  (operation)
+  fs.pump.efficiency_pump  (design)
+\end{verbatim}
+
+This also shows which variables are tagged as design variables or operating variables.
+Inlet variables are tagged seperately as they don't fit neatly into either category. 
+Additional categories of variables can be added if required.
+
+We can then choose to replace any of the Initial Variables with other variables in the model.
+In this case, we want to specify the outlet conditions of the heat exchangers to calculate the appropriate
+heat transfer coefficients we should design for. For numerical stability and following best practices with this property package,
+we are specifying the outlet enthalpy instead of the outlet temperature. Likewise, we also specify the outlet pressure of the pump and
+turbine instead of the mechanical work.
+Replacing a variable is as simple as calling a function,
+passing the Initial Variable to unfix and the new variable to fix:
+
+\begin{verbatim}
+> replace_state_var(m.fs.vaporizer.overall_heat_transfer_coefficient,
+                    m.fs.vaporizer.cold_side_outlet.enth_mol)
+> replace_state_var(m.fs.preheater.overall_heat_transfer_coefficient,
+                    m.fs.preheater.cold_side_outlet.enth_mol)
+> replace_state_var(m.fs.recuperator.overall_heat_transfer_coefficient,
+                    m.fs.recuperator.cold_side_outlet.enth_mol)
+> replace_state_var(m.fs.condenser.overall_heat_transfer_coefficient,
+                    m.fs.condenser.hot_side_outlet.enth_mol)
+> replace_state_var(m.fs.pump.work_mechanical, 
+                    m.fs.pump.outlet.pressure)
+> replace_state_var(m.fs.turbine.work_mechanical, 
+                    m.fs.turbine.outlet.pressure)
+\end{verbatim}
+
+Now we can run \texttt{pprint\_replacements} again, to show that
+\texttt{work\_mechanical} has been replaced by \texttt{outlet.pressure}.
+
+\begin{verbatim}
+> pprint_replacements(m.fs)
+
+Replacements in block fs:
+(Variable -> Replaced State Var)
+  fs.vaporizer._enth_mol_cold_side_outlet_ref 
+      -> fs.vaporizer.overall_heat_transfer_coefficient  (design)
+  fs.preheater._enth_mol_cold_side_outlet_ref 
+      -> fs.preheater.overall_heat_transfer_coefficient  (design)
+  fs.recuperator._enth_mol_cold_side_outlet_ref 
+      -> fs.recuperator.overall_heat_transfer_coefficient  (design)
+  fs.condenser._enth_mol_hot_side_outlet_ref 
+      -> fs.condenser.overall_heat_transfer_coefficient  (design)
+  fs.pump._pressure_outlet_ref 
+      -> fs.pump.work_mechanical  (operation)
+  fs.turbine._pressure_outlet_ref 
+      -> fs.turbine.work_mechanical  (operation)
+
+Unreplaced state variables in block fs:
+  fs.preheater.area  (design)
+  fs.vaporizer.area  (design)
+  fs.vaporizer._flow_mol_hot_side_inlet_ref  (inlet)
+  fs.vaporizer._enth_mol_hot_side_inlet_ref  (inlet)
+  fs.vaporizer._pressure_hot_side_inlet_ref  (inlet)
+  fs.brine_mixer._flow_mol_inlet_2_ref  (inlet)
+  fs.brine_mixer._enth_mol_inlet_2_ref  (inlet)
+  fs.brine_mixer._pressure_inlet_2_ref  (inlet)
+  fs.turbine.efficiency_isentropic  (design)
+  fs.recuperator.area  (design)
+  fs.condenser.area  (design)
+  fs.condenser._flow_mol_cold_side_inlet_ref  (inlet)
+  fs.condenser._enth_mol_cold_side_inlet_ref  (inlet)
+  fs.condenser._pressure_cold_side_inlet_ref  (inlet)
+  fs.pump.efficiency_pump  (design)
+\end{verbatim}
+
+Then a value can be specified for all the variables that are replacing Initial Variables, and all the Initial Variables that
+have not been replaced. This model can then be initialized and solved using the standard pyomo and idaes
+libraries.
+
+To switch this model from a design case to a performance rating case, we can simply remove the replacements on the design variables:
+
+\begin{verbatim}
+deactivate_category(m.fs, "design")
+\end{verbatim}
+
+This re-fixes the heat exchanger overall heat transfer coefficients, 
+but keeps the replacements on the operating variables. This is scalable to larger models, as the design variables are tagged ahead of time,
+meaning that it is always easy to switch between these cases. Because of the coupling between design variables and their replaced variables, the model includes
+information about which dependent variables need to be removed when the design variables are fixed again.
+
+To switch the model to a ``simulation" case, where all design and operating variables are fixed, we can also remove the replacements on the operating variables.
+This will revert to the original set of initial variables. Thus, it becomes easy to use the model for a variety of use cases, as variable replacement and the tagging of the design and operating variables provides the additional metadata required.
 
 \hypertarget{dynamic-tank}{%
 \subsection{Dynamic Tank}\label{dynamic-tank}}
@@ -765,20 +832,20 @@ appropriate Initial Variable has to be chosen and ``replaced''. This makes
 the Initial Variable a ``guess'': the user still needs to enter a value,
 but it is shown with no background color, to indicate to the user that
 it will be calculated when the flowsheet is solved. A message tells the
-user what variable is replacing it. The calculated variable then shows
-up like an Initial Variable, with a message to show which variable it is
-replacing. This ensures the user is informed about which variable is
-being replaced by which.
+user what variable is replacing it. The calculated variable then becomes editable.
+A message shows which variable it is
+replacing,  ensures the user is able to keep track of replacements.
 
 \begin{figure}
 \centering
 \includegraphics[width=\textwidth]{assets/ahuora-replacement.png}
 \caption{Variable replacement on a Compressor model in the Ahuora
 Platform.}
+\label{fig:ahuora-replacement}
 \end{figure}
 
-In the example image, the ``Pressure Drop'' Initial Variable is fixed at 0
-kPa. The ``Mechanical Work'' Initial Variable in the Compressor is being
+In \cref{fig:ahuora-replacement}, the ``Isentropic Efficiency'' Initial Variable is fixed at approximately 70\%. 
+The ``Mechanical Work'' Initial Variable in the Compressor is being
 replaced by the Pressure at the outlet stream. An initial guess for
 ``Mechanical Work'' may still be entered, which is updated to the
 correct value, which is based on the pressure specified at the outlet,
@@ -1087,7 +1154,7 @@ what the model developer expected was most likely to be fixed.
 
 However, depending on the problem, different variables may be fixed. For
 example, the outlet pressure may be known instead of the mechanical
-work. In a traditional system, you would just fix the outlet pressure
+work. In a degree-of-freedom based modelling system, the user would just fix the outlet pressure
 instead of the mechanical work (Figure
 \ref{compressor-fixed-traditional}).
 
@@ -1098,8 +1165,8 @@ instead of the mechanical work (Figure
 \label{compressor-fixed-traditional}}
 \end{figure}
 
-The equivalent model, using a variable replacement approach, would
-require explicitly replacing the mechanical work Initial Variable. This
+Using a variable replacement approach, the user must explicitly replace 
+the mechanical work Initial Variable with the outlet pressure. This
 would create a link between the two variables to show what Mechanical
 work was replaced by (Figure \ref{compressor-replacement}).
 
@@ -1122,7 +1189,7 @@ specified indirectly.
 \subsubsection{Example 2: Modifying a
 flowsheet}\label{example-2-modifying-a-flowsheet}}
 
-EOMs are generally considered as a finished product, and their evolution
+EOMs are generally evaluated when they are complete, and their evolution
 and development is ignored. However, in practice EOMs are built like
 pieces of software; iteratively and incrementally over time\footnote{A
   good explanation of iterative vs incremental development is discussed
@@ -1181,15 +1248,19 @@ need to be fixed. Because the outlet pressure was replacing Mechanical
 Work on the pump, and the pump has been removed, outlet pressure no
 longer needs to be fixed. Thus, the model is still fully specified.
 
+Defining which variables are design variables and which variables are 
+operating variables further improves this process, allowing a user
+to easily switch the model between completely different analysis modes.
+
 \begin{figure}
 \centering
 \includegraphics[width=\textwidth]{assets/deleting-traditional.drawio.png}
-\caption{Using a traditional modelling methodology, there is no coupling
+\caption{Using a traditional EOM modelling methodology, there is no coupling
 of variables, so when the pump is deleted there is no intuition what
 variables to remove.}
 \end{figure}
 
-Using a traditional modelling methodology, there is no coupling of
+Using a traditional EOM modelling methodology, there is no coupling of
 variables, so when the pump is deleted there is no information provided
 on what variables to remove. There are two options:
 
@@ -1230,9 +1301,6 @@ languages in software development, the realisable benefit may depend on
 the use case.
 
 
-
-
-
 \hypertarget{conclusion}{%
 \section{Conclusions}\label{conclusion}}
 
@@ -1245,14 +1313,17 @@ use the model do not need to first square the problem. Degrees of
 freedom are kept at zero through any changes that are made to the
 flowsheet. The coupling between Initial Variables and fixed variables
 provides a more interpretable way of reasoning about the model, bringing
-the relationships between variables to the forefront. Additionally, a
-set of Initial Variables and initial guesses for them makes it simpler to
+the relationships between variables to the forefront. Tagging Initial Variables
+with metadata about their real-world meaning, such as if they are design parameters 
+or operating parameters, makes it easy to switch between different use cases.
+Additionally, enforcing a standard set of Initial Variables and requiring the user
+to provide initial guesses for them makes it simpler to
 build initialisation and scaling methods. The Ahuora Digital Twin
 Platform provides a case study on how this is beneficial, particularly
 when using a GUI tool for modelling.
 
 While this paper introduces Variable Replacement as a method and purview
-its potential benefits, further research is required to systematically
+its potential benefits in the chemical engineering domain, further research is required to systematically
 evaluate the interpretability and initialisation advantages across
 different types of EOMs. Nonetheless, these techniques hold promise to
 standardise the creation and use of libraries of EOMs. This would enable
