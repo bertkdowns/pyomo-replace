@@ -217,9 +217,9 @@ same idea here to model specification.
 We propose that each submodel be defined in a specific way:
 
 \begin{itemize}
-  \item a set of `Initial Variables' are fixed by default, such that the submodel has zero degrees of freedom, and all other variables are defined in terms of these Initial Variables. These Initial Variables are either design variables or operating variables in a process model.
-  \item if a user wants to fix a variable that is not an Initial Variable, they must choose an Initial Variable to unfix, and replace it with one of the dependent variables they want to fix.
-  \item if an Initial Variable is unfixed, an initial guess must be provided for it.
+  \item a set of `Canonical Variables' are fixed by default, such that the submodel has zero degrees of freedom, and all other variables are defined in terms of these Canonical Variables. These Canonical Variables are either design variables or operating variables in a process model.
+  \item if a user wants to fix a variable that is not a Canonical Variable, they must choose a Canonical Variable to unfix, and replace it with one of the dependent variables they want to fix.
+  \item if a Canonical Variable is unfixed, an initial guess must be provided for it.
 \end{itemize}
 
 In essence, we manage specification as if the EOM exposed an explicit
@@ -229,11 +229,11 @@ workflow level rather than to reformulate the model itself.
 
 This leads to some helpful emergent properties that make modelling
 large systems easier. The manual burden of degree-of-freedom management
-is reduced because the Initial Variables fully define the baseline
+is reduced because the Canonical Variables fully define the baseline
 specification, and for any additional variable that is fixed, a design
 or operating variable is unfixed to preserve the specification count.
 Initialisation becomes easier, as initialisation methods only need to be
-defined for the Initial Variables. To convert a model from a design to
+defined for the Canonical Variables. To convert a model from a design to
 operation to performance-rating study, the modeller can remove
 replacements on the design or operating variables to re-fix them while
 maintaining a fully defined model.
@@ -329,12 +329,12 @@ that maintains the condition that \(DoF(\mathcal{M}_{new}) = 0\).
 \hypertarget{repeated-replacement}{%
 \subsubsection{Repeated Replacement}\label{repeated-replacement}}
 
-As the result of a replacement is still an EOM, the process can be repeated. Each time it is repeated, \(\mathcal{F}_{i}\) is updated to \(\mathcal{F}_{i+1}\).  This gradually replaces the original set of fixed variables (\(\mathcal{F}\), also called the Initial Variables) with a new set of fixed variables (\(\mathcal{F}_{replaced}\)). 
+As the result of a replacement is still an EOM, the process can be repeated. Each time it is repeated, \(\mathcal{F}_{i}\) is updated to \(\mathcal{F}_{i+1}\). This gradually replaces the original set of fixed variables (\(\mathcal{F}\), also called the Canonical Variables) with a new set of fixed variables (\(\mathcal{F}_{replaced}\)). 
 
 \hypertarget{initialisation-of-repeated-replacement}{%
 \subsubsection{Initialisation of Models}\label{initialisation-of-repeated-replacement}}
 
-Initalisation methods can be written to calculate initial values for all variables based on the initial set of fixed variables (\(\mathcal{F}\)). After the initialisation method is run, the model can be solved with the new set of fixed variables (\(\mathcal{F}_{replaced}\)) to calculate the correct values of any variables that were originally fixed. This allows the same initialisation method to be used regardless of which variables are fixed as long as an initial guess is provided for the Initial Variables.
+Initalisation methods can be written to calculate initial values for all variables based on the canonical set of fixed variables (\(\mathcal{F}\)). After the initialisation method is run, the model can be solved with the new set of fixed variables (\(\mathcal{F}_{replaced}\)) to calculate the correct values of any variables that were originally fixed. This allows the same initialisation method to be used regardless of which variables are fixed as long as an initial guess is provided for the Canonical Variables.
 
 \hypertarget{design-and-operation-variables}{
 \subsubsection{A method for switching between design, performance rating, and operation case studies}\label{design-and-operation-variables}}
@@ -350,9 +350,9 @@ Pyomo-replace: A Library for Variable Replacement in Equation-Oriented Models}\l
 
 To aid in evaluating the advantages of a variable replacement approach
 to equation-oriented modelling, we have created a small python package
-built on IDAES and pyomo, called pyomo-replace. It keeps track of the Initial Variables
+built on IDAES and pyomo, called pyomo-replace. It keeps track of the Canonical Variables
 in an IDAES model, and what variables are replacing them. The list of
-Initial Variables and replacements can be easily printed to the screen to
+Canonical Variables and replacements can be easily printed to the screen to
 help explain the model structure.
 
 In Pyomo, an EOM is specified as a set of Blocks, with each block
@@ -376,21 +376,21 @@ Pyomo-replace is specifically targeted to representing these types of
 EOMs.
 
 \hypertarget{state-variables}{%
-\subsubsection{Initial Variables}\label{state-variables}}
+\subsubsection{Canonical Variables}\label{state-variables}}
 
 Because each block contains a set of variables and constraints, it can
 be considered an independent system of equations.
-Thus, each block has its own set of Initial Variables that are fixed by default to make it a square model.
+Thus, each block has its own set of Canonical Variables that are fixed by default to make it a square model.
 
-The Initial Variables are chosen by first fixing all inlet variables. By
+The Canonical Variables are chosen by first fixing all inlet variables. By
 convention, all inlet variables are automatically considered state
 variables, if and only if the inlet is not connected to an outlet. Then,
 additional variables are fixed in the model until the model is square.
-These variables are also considered Initial Variables.
+These variables are also considered Canonical Variables.
 
-The set of Initial Variables is defined by the author of
+The set of Canonical Variables is defined by the author of
 the block. This means that if a user imports a block from an external library,
-it comes with a predefined set of Initial Variables and initialisation methods that work with them.
+it comes with a predefined set of Canonical Variables and initialisation methods that work with them.
 This provides a form of self-documentation and makes it easier to use
 external models.
 
@@ -398,7 +398,7 @@ external models.
 \subsubsection{Building a model}\label{building-a-model}}
 
 In IDAES, a model is built from a number of blocks. By default, all
-Initial Variables are fixed, and all unconnected inlets are fixed, and so
+Canonical Variables are fixed, and all unconnected inlets are fixed, and so
 there will be no degrees of freedom. This fully specifies the model, as
 all operations are fully defined: either explicitly, or based on the
 outlet conditions of other operations.
@@ -407,7 +407,7 @@ outlet conditions of other operations.
 \subsubsection{Replacing Variables.}\label{replacing-variables.}}
 
 Once a model is built, different variables can be fixed instead of the
-Initial Variables. For this to happen, a couple of conditions need to be
+Canonical Variables. For this to happen, a couple of conditions need to be
 met:
 
 \begin{itemize}
@@ -417,19 +417,19 @@ met:
   the model was previously fully defined, this will make the model
   over-defined, with -1 degrees of freedom.
 \item
-  To prevent the model becoming over-defined, an Initial Variable must be
-  chosen and unfixed. We say the Initial Variable has been ``replaced''
+  To prevent the model becoming over-defined, a Canonical Variable must be
+  chosen and unfixed. We say the Canonical Variable has been ``replaced''
   with the new variable.
 \item
-  The Initial Variable must be chosen such that all equations in the model
+  The Canonical Variable must be chosen such that all equations in the model
   are not structurally singular. This can be done by choosing a state
   variable that is part of the Dulmage-Mendelson Over-constrained set 
   when the new variable was fixed \citep{lee2024model}.
 \end{itemize}
 
-Metadata about which variables are replacing which Initial Variables is
+Metadata about which variables are replacing which Canonical Variables is
 stored, for initialisation and interpretation purposes.
-If a variable is ever unfixed, the Initial Variable it replaced
+If a variable is ever unfixed, the Canonical Variable it replaced
 must be fixed again.
 
 
@@ -465,7 +465,7 @@ constraints removed is equal to the number of constraints added.
 Properties}\label{calculating-inlet-properties}}
 
 Inlets that are not connected to anything upstream are considered to be
-Initial Variables. They can be replaced by other variables. This is
+Canonical Variables. They can be replaced by other variables. This is
 generally fine, but some models are built with the expectation that
 inlet conditions are calculated. For example, the pressure exchanger
 model at \citep{watertap_pressure_exchanger} expects that the inlet flow
@@ -507,8 +507,8 @@ variable replacement methodology: variable replacement could be used to
 fully define the model for an initial solve. Then a set of additional
 variables can be unfixed and the optimisation algorithm can be run.
 
-Additionally, knowing the list of Initial Variables may still provide good
-context for optimisation, as any Initial Variables you unfix are the ones
+Additionally, knowing the list of Canonical Variables may still provide good
+context for optimisation, as any Canonical Variables you unfix are the ones
 for which you are calculating an optimum value.
 
 
@@ -538,7 +538,7 @@ consider a geothermal power plant flowsheet \citep{severinsen2024digital}.
 \centering
 \includegraphics[width=\textwidth]{assets/geothermal-replacement.drawio.png}
 \caption{Flow Diagram of a fully specified Geothermal Power Plant,
-demonstrating which Initial Variables are being replaced.}
+demonstrating which Canonical Variables are being replaced.}
 \end{figure}
 
 This model includes four heat exchangers
@@ -594,7 +594,7 @@ These lines:
 \end{itemize}
 
 Then unit models are added to the flowsheet and connected together as normal in IDAES. However,
-the unit models are imported from the pyomo-replace library, which have already defined the Initial Variables 
+the unit models are imported from the pyomo-replace library, which have already defined the Canonical Variables 
 and appropriate initialisation methods to work with them. The models also have tagged which variables are design variables,
 and which variables are operating variables.
 
@@ -624,7 +624,7 @@ on the inlet and outlet ports of the unit models.
 
 Once the unit models
 have been added to the flowsheet and connected up, pyomo-replace
-requires that all inlet ports are registered as Initial Variables:
+requires that all inlet ports are registered as Canonical Variables:
 
 \begin{verbatim}
 > register_inlet_ports(m.fs)
@@ -639,15 +639,15 @@ degrees of freedom.
 Typically, at this point in a normal IDAES model, there would be many degrees of freedom and
 the user would need to figure out which variables to fix to make the model square.
 However, in pyomo-replace, the model is already square, and the user can simply
-set values for the Initial Variables, or replace them with other variables as required.
+set values for the Canonical Variables, or replace them with other variables as required.
 
-Pyomo-replace provides a method to print the list of Initial Variables and any replacements that have been made:
+Pyomo-replace provides a method to print the list of Canonical Variables and any replacements that have been made:
 
 \begin{verbatim}
 > pprint_replacements(m.fs)
 \end{verbatim}
 
-This prints a list of all Initial Variables, and any that are being
+This prints a list of all Canonical Variables, and any that are being
 replaced by other variables. As we have not yet replaced any state
 variables, it would simply print a list of all the variables that we
 need to either set a value for, or replace:
@@ -681,13 +681,13 @@ This also shows which variables are tagged as design variables or operating vari
 Inlet variables are tagged separately as they don't fit neatly into either category. 
 Additional categories of variables can be added if required.
 
-We can then choose to replace any of the Initial Variables with other variables in the model.
+We can then choose to replace any of the Canonical Variables with other variables in the model.
 In this case, we want to specify the outlet conditions of the heat exchangers to calculate the appropriate
 heat transfer coefficients we should design for. For numerical stability and following best practices with this property package,
 we are specifying the outlet enthalpy instead of the outlet temperature. Likewise, we also specify the outlet pressure of the pump and
 turbine instead of the mechanical work.
 Replacing a variable is as simple as calling a function,
-passing the Initial Variable to unfix and the new variable to fix:
+passing the Canonical Variable to unfix and the new variable to fix:
 
 \begin{verbatim}
 > replace_state_var(m.fs.vaporizer.overall_heat_transfer_coefficient,
@@ -743,7 +743,7 @@ Unreplaced state variables in block fs:
   fs.pump.efficiency_pump  (design)
 \end{verbatim}
 
-Then a value can be specified for all the variables that are replacing Initial Variables, and all the Initial Variables that
+Then a value can be specified for all the variables that are replacing Canonical Variables, and all the Canonical Variables that
 have not been replaced. This model can then be initialized and solved using the standard pyomo and idaes
 libraries.
 
@@ -770,7 +770,7 @@ This will revert to the original set of initial variables. Thus, it becomes easy
 \caption{A model of a tank with valves controlling the inlet and the
 outlet. Properties with an asterisk (*) next to them are not
 time-indexed. The tank outlet pressure is referenced by the PID
-controller, but is not an Initial Variable.}
+controller, but is not a Canonical Variable.}
 \end{figure}
 
 A dynamic flowsheet allows us to test a different aspect of our system:
@@ -780,7 +780,7 @@ and outlet valve controlling the flow rate in and out of the tank. The
 flow into the tank is controlled by a PID controller, which is targeting
 a certain outlet pressure within the tank.
 
-Both the valves have two Initial Variables: the valve coefficient, and the
+Both the valves have two Canonical Variables: the valve coefficient, and the
 valve opening fraction. However, the valve coefficient is a constant
 property; it cannot be changed throughout the simulation. To indicate
 this, we have included an asterisk (*) next to them. In contrast, the
@@ -814,7 +814,7 @@ opening fraction. This is a simple solution that can be done when the
 PID controller is connected up to the valve opening fraction.
 
 Initial Material Accumulation and Initial Energy Accumulation can be
-treated as additional Initial Variables if it is appropriate. It would be
+treated as additional Canonical Variables if it is appropriate. It would be
 feasible to use the replacement logic to replace them with Initial
 Material Holdup and Initial Energy Holdup. However, typically dynamic
 flowsheets start with a steady-state assumption, and all accumulation
@@ -843,11 +843,11 @@ The Ahuora Digital Twin Platform is a web-based process simulation
 environment. It is built using IDAES and Pyomo as the equation-oriented
 modelling libraries as the simulation backend.
 
-Each unit operation has a set of Initial Variables, where the user can
+Each unit operation has a set of Canonical Variables, where the user can
 enter a value, and a set of calculated variables, which cannot be
 entered by the user. If a user wants to fix a calculated variable, an
-appropriate Initial Variable has to be chosen and ``replaced''. This makes
-the Initial Variable a ``guess'': the user still needs to enter a value,
+appropriate Canonical Variable has to be chosen and ``replaced''. This makes
+the Canonical Variable a ``guess'': the user still needs to enter a value,
 but it is shown with no background color, to indicate to the user that
 it will be calculated when the flowsheet is solved. A message tells the
 user what variable is replacing it. The calculated variable then becomes editable.
@@ -862,8 +862,8 @@ Platform.}
 \label{fig:ahuora-replacement}
 \end{figure}
 
-In \cref{fig:ahuora-replacement}, the ``Isentropic Efficiency'' Initial Variable is fixed at approximately 70\%. 
-The ``Mechanical Work'' Initial Variable in the Compressor is being
+In \cref{fig:ahuora-replacement}, the ``Isentropic Efficiency'' Canonical Variable is fixed at approximately 70\%. 
+The ``Mechanical Work'' Canonical Variable in the Compressor is being
 replaced by the Pressure at the outlet stream. An initial guess for
 ``Mechanical Work'' may still be entered, which is updated to the
 correct value, which is based on the pressure specified at the outlet,
@@ -880,15 +880,15 @@ user with any direction on how to get started.
 One of the major advantages of Variable Replacement that we have noticed
 in a GUI is that it provides additional context for unit operations. In
 a GUI program, it is very easy to visually show that context by
-styling fixed Initial Variables, guesses, and calculated variables
+styling fixed Canonical Variables, guesses, and calculated variables
 differently, and to show the links between variables.
 
 Working with a GUI also means that adding and removing unit operations
 is common, and Variable Replacement provides a sensible way to deal with
 adding or removing unit operations. When a unit operation is added, it's
-Initial Variables and inlet ports are fixed by default to ensure the
+Canonical Variables and inlet ports are fixed by default to ensure the
 degrees of freedom are still zero. When a unit operation is removed,
-anything that is replacing it's Initial Variables is also unfixed, and any
+anything that is replacing its Canonical Variables is also unfixed, and any
 inlet ports that were previously connected to the outlet of the unit
 operation are fixed, again keeping the degrees of freedom at zero.
 
@@ -897,7 +897,7 @@ routines, because these are usually specified as python code and can be
 quite complex, so it is out of scope of the project. However, the
 multi-stage initialisation that naturally works with variable
 replacement helps to improve the reliability of solving. As guesses are
-specified for the Initial Variables, these can be used in the
+specified for the Canonical Variables, these can be used in the
 initialisation routine. In particular, this enables us to specify any
 set of variables to define the conditions of an inlet stream, whereas
 IDAES does not have initialisation routines for any set of state
@@ -918,7 +918,7 @@ variables and is typically limited to only a certain set of properties.
 \hypertarget{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}{%
 \section{Discussion}\label{properties-of-a-variable-replacement-approach-to-equation-oriented-modelling}}
 
-This method of replacing Initial Variables does not fundamentally change
+This method of replacing Canonical Variables does not fundamentally change
 the underlying model equations, solver, or structural analysis.
 Technically, it is still based on fixing one variable and unfixing
 another. The contribution is that this action is elevated into an
@@ -950,7 +950,7 @@ equation-oriented systems.
   operation becomes easier.
 \item
   It standardises initialisation routines, as long as guesses are
-  provided for Initial Variables.
+  provided for Canonical Variables.
 \item
   The coupling of variables adds a level of interpretability to the
   model's specification, which makes it easier to maintain and
@@ -977,14 +977,14 @@ first recommended step to diagnose problems \citep{lee2024model}. Newer
 analysis methods, such as Dulmage-Mendelson Decomposition do make this
 simpler, but it is still an iterative process.
 
-Using a Variable Replacement approach, a set of Initial Variables would
+Using a Variable Replacement approach, a set of Canonical Variables would
 already be defined by the model library, so the user would not need to
 manually square the baseline model. There are zero degrees of freedom
 \emph{by construction} for that baseline specification. If a problem
-requires a variable to be fixed that is not an Initial Variable, an
-appropriate\footnote{i.e an Initial Variable that would be part of the
+requires a variable to be fixed that is not a Canonical Variable, an
+appropriate\footnote{i.e a Canonical Variable that would be part of the
   Dulmage-Mendelson over-constrained set if the other variable was
-  fixed and nothing was unfixed} Initial Variable must be unfixed too.
+  fixed and nothing was unfixed} Canonical Variable must be unfixed too.
 Because the workflow requires adding and removing one specification
 together, it preserves a square model through the replacement process.
 In practice this removes much of the trial-and-error associated with
@@ -995,12 +995,12 @@ manual specification changes in EOMs.
 analysis}\label{switching-between-different-types-of-analysis}}
 
 We have previously discussed using the car example that some state
-variables are design Initial Variables (i.e \(k\)), and some are
+variables are design Canonical Variables (i.e \(k\)), and some are
 manipulated variables (i.e \(y\)), and all other variables are dependent
 (i.e \(v\)).
 
-A design problem would involve finding an appropriate for the design
-Initial Variables, by calculating a desired \(k\). In an operation case,
+A design problem would involve finding an appropriate value for the design
+Canonical Variables, by calculating a desired \(k\). In an operation case,
 \(k\) is fixed and known, but an appropriate value of \(y\) may be
 required. To turn a design case into an operation case, all that is
 required is to fix all the design variables, which can be done un-doing
@@ -1012,7 +1012,7 @@ Likewise, a robustness test typically involves fixing only the decision
 variables (both design and operation) and calculating how sensitive the
 dependent variables are to changes. Again, this is easy to do in the
 variable replacement framework by simply undoing all replacements, as
-the decision variables are the Initial Variables.
+the decision variables are the Canonical Variables.
 
 \hypertarget{simplified-initialisation}{%
 \subsection{\texorpdfstring{Simplified Initialisation
@@ -1032,19 +1032,19 @@ problems.
 variables to avoid the need for different initialisation methods.}
 \end{figure}
 
-The concept of ``Initial Variables'' can simplify this process, by
+The concept of ``Canonical Variables'' can simplify this process, by
 splitting the initialisation into two parts. First, the initialisation
 methods can calculate initial values of all variables based on the
-values or guesses of the Initial Variables. Then, once the model has been
-initialised in a sensible location, any Initial Variables that are
+values or guesses of the Canonical Variables. Then, once the model has been
+initialised in a sensible location, any Canonical Variables that are
 replaced (i.e, were guesses) can be unfixed, and the variables that are
 replacing them can be fixed back to their original values. The block can
 then be re-solved to calculate the correct value of any ``guessed''
-Initial Variable.
+Canonical Variable.
 
 This limits the logic in initialisation routines, as only one
 initialisation method is required be required. It does require that
-initial guesses are provided for all the Initial Variables, but this is a
+initial guesses are provided for all the Canonical Variables, but this is a
 reasonable tradeoff. This standardises the initialisation process to
 work across all sets of fixed variables, while still giving the model
 library developer freedom to develop whatever initialisation method they
@@ -1139,7 +1139,7 @@ developers find this invaluable in helping to understand the system.
 The replacement system works in a similar manner, as it bakes in more
 context to the model. Similar to a type system in a programming
 language, this increases the model's interpretability and
-maintainability. Technically, it doesn't matter which Initial Variable a
+maintainability. Technically, it doesn't matter which Canonical Variable a
 model is replacing; just which variables are fixed and which are
 unfixed. However, having that context makes understanding \emph{why} a
 variable needs to be fixed much clearer.
@@ -1163,7 +1163,7 @@ include the following variables as shown in Figure \ref{compressor-dof}.
 \end{figure}
 
 The equivalent model, using a variable replacement approach, would have
-Initial Variables already defined by the developer of the Compressor Unit
+Canonical Variables already defined by the developer of the Compressor Unit
 Model (Figure \ref{compressor-sv-defined}).
 
 \begin{figure}
@@ -1190,7 +1190,7 @@ instead of the mechanical work (Figure
 \end{figure}
 
 Using a variable replacement approach, the user must explicitly replace 
-the mechanical work Initial Variable with the outlet pressure. This
+the mechanical work Canonical Variable with the outlet pressure. This
 would create a link between the two variables to show what Mechanical
 work was replaced by (Figure \ref{compressor-replacement}).
 
@@ -1256,11 +1256,11 @@ are removing multiple variables and constraints simultaneously.
 \centering
 \includegraphics[width=\textwidth]{assets/deleting-replacement.drawio.png}
 \caption{Deleting the pump from a flowsheet is handled elegantly as the
-fixed variables are coupled to specific Initial Variables.}
+fixed variables are coupled to specific Canonical Variables.}
 \end{figure}
 
 Consider this model of a pump connected to a heater, with all the state
-variables defined. The inlet conditions are Initial Variables, and so is
+variables defined. The inlet conditions are Canonical Variables, and so is
 the mechanical work of the pump, and the heat duty of the heater.
 However, the mechanical work and heat duty are replaced by the
 temperature and pressure of the outlet; i.e the temperature and pressure
@@ -1306,7 +1306,7 @@ on what variables to remove. There are two options:
 
 Both of these options require manual intervention from the modeller, as
 there is no clear path to maintain a solvable model. In comparison, when
-fixed variables are coupled to a set of Initial Variables, it is easy to
+fixed variables are coupled to a set of Canonical Variables, it is easy to
 see when to unfix the variable: when the state var it is connected to is
 removed.
 
@@ -1332,15 +1332,15 @@ Variable replacement provides an alternative way of maintaining a square
 model in an equation-oriented framework, particularly when scaling up to
 larger EOMs.
 
-If Initial Variables are defined on each block added to a model, those who
+If Canonical Variables are defined on each block added to a model, those who
 use the model do not need to first square the problem. Degrees of
 freedom are kept at zero through any changes that are made to the
-flowsheet. The coupling between Initial Variables and fixed variables
+flowsheet. The coupling between Canonical Variables and fixed variables
 provides a more interpretable way of reasoning about the model, bringing
-the relationships between variables to the forefront. Tagging Initial Variables
+the relationships between variables to the forefront. Tagging Canonical Variables
 with metadata about their real-world meaning, such as if they are design parameters 
 or operating parameters, makes it easy to switch between different use cases.
-Additionally, enforcing a standard set of Initial Variables and requiring the user
+Additionally, enforcing a standard set of Canonical Variables and requiring the user
 to provide initial guesses for them makes it simpler to
 build initialisation and scaling methods. The Ahuora Digital Twin
 Platform provides a case study on how this is beneficial, particularly
