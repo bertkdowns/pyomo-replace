@@ -64,39 +64,39 @@ def restore_model_definition(blk: Block, state: dict):
     from_json(blk, sd=state, wts=StoreSpec.value_isfixed(True)) # only load the fixed values
 
 
-def fix_state_vars(blk):
+def fix_canonical_vars(blk):
     """
-    Fix the state variables for this block.
+    Fix the canonical variables for this block.
 
-    This requires that the block has state variables registered (via calling register_state_vars on the block.).
+    This requires that the block has canonical variables registered on the block.
     Usually this is done in the build() method of the block.
     """
-    for var in blk._state_vars:
+    for var, _category in blk._state_vars:
         var.fix()
 
-def fix_replaced_state_vars(blk):
+def fix_replaced_canonical_vars(blk):
     """
-    If any state variables have been replaced by other variables in this block,
-    fix those variables instead of the state vars.
+    If any canonical variables have been replaced by other variables in this block,
+    fix those variables instead of the canonical vars.
 
     The reason for doing this is to get the model closer to what the final solve state will be.
     We can only do this for variables that are children of this block.
 
-    Any other variables that were fixed on this block but are not tied to a state variable in this block
+    Any other variables that were fixed on this block but are not tied to a canonical variable in this block
     will not be fixed during initialization, as they require degrees of freedom from
     other unit operations so fixing them here would overconstrain the model.
     
-    This requires that the block has state variables registered (via calling register_state_vars on the block.).
+    This requires that the block has canonical variables registered on the block.
     Usually this is done in the build() method of the block.
     """
-    for state_var, new_var in blk._replacements:
+    for canonical_var, new_var in blk._replacements:
         if is_child_of(new_var, blk):
             new_var.fix() 
-            state_var.unfix()
+            canonical_var.unfix()
 
 def fix_inlets(blk):
     """
-    Fix all inlet port state variables.
+    Fix all inlet port canonical variables.
     This assumes that the inlet port has been marked as an inlet (e.g. self.inlet.is_inlet = True)
     """
     for port in blk.component_data_objects(
@@ -109,12 +109,12 @@ def staged_initialise(blk: Block, opt, outlvl=idaeslog.NOTSET):
     """
     Performs a two-step initialization of the block.
 
-    1. Fix the state variables and solve. Hopefully you've provided some good initial guesses.
-    2. if a state var has been replaced by something in this block,
+    1. Fix the canonical variables and solve. Hopefully you've provided some good initial guesses.
+    2. if a canonical variable has been replaced by something in this block,
        unfix it, fix that, and solve again. That should get you closer to the true solution.
     
-    This expects that the inlet and outlet state blocks have already been initialised, and that everything is
-    unfixed on this block execpt for the inlet state vars. 
+    This expects that the inlet and outlet property blocks have already been initialised, and that everything is
+    unfixed on this block except for the inlet canonical variables. 
 
     A typical usage would be in conjunction with record_model_definition() and restore_model_definition() to ensure that the original model definition is preserved
 
@@ -125,28 +125,28 @@ def staged_initialise(blk: Block, opt, outlvl=idaeslog.NOTSET):
     properties_in_state_block.initialize(hold_state=True,...) # we still want inlet states fixed during initialisation
     properties_out_state_block.initialize(hold_state=False,...) # We still need the outlets to be initialised with good guesses 
     staged_initialise(blk, opt) # perform the staged initialisation
-    restore_model_definition(blk, blk_state) # restore original fixed vars so the model definition is unchanged. this will also release any inlet state vars fixed during initialisation.
+    restore_model_definition(blk, blk_state) # restore original fixed vars so the model definition is unchanged. this will also release any inlet canonical variables fixed during initialisation.
 
     """
     init_log = idaeslog.getInitLogger(blk.name, outlvl, tag="unit")
     solve_log = idaeslog.getSolveLogger(blk.name, outlvl, tag="unit")
 
-    fix_state_vars(blk)
+    fix_canonical_vars(blk)
     #fix_inlets(blk)
 
 
-    # Step 1: Solve with state vars fixed
+    # Step 1: Solve with canonical vars fixed
     with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
         res = opt.solve(blk, tee=slc.tee)
-    init_log.info_high("Staged Initialisation: State var solve: {}.".format(idaeslog.condition(res)))
+    init_log.info_high("Staged Initialisation: Canonical variable solve: {}.".format(idaeslog.condition(res)))
     
     if not check_optimal_termination(res):
         raise InitializationError(
-            f"{blk.name} failed to initialize with state vars. Please check "
+            f"{blk.name} failed to initialize with canonical variables. Please check "
             f"the output logs for more information, or try different guesses."
         )
 
-    fix_replaced_state_vars(blk)
+    fix_replaced_canonical_vars(blk)
 
     with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
         res = opt.solve(blk, tee=slc.tee)
@@ -161,4 +161,3 @@ def staged_initialise(blk: Block, opt, outlvl=idaeslog.NOTSET):
     
 
     init_log.info(f"Initialization Complete: {idaeslog.condition(res)}")
-

@@ -7,7 +7,7 @@ from model import register_block
 @declare_process_block_class("SVMixer")
 class SVMixerData(MixerData):
     """
-    Heater model, but it's set up with heat duty and deltaP as state variables.
+    Mixer model with canonical variables for specification management.
     """
 
     def build(self,*args, **kwargs):
@@ -16,12 +16,12 @@ class SVMixerData(MixerData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [] # mixers don't have any degree of freedom
+        canonical_vars = [] # mixers don't have any degree of freedom
         
-        # Setup the default state variables.
+        # Setup the default canonical variables.
         # Allow_degrees_of_freedom is set to True because 
         # the inlet conditions are not fixed here.
-        register_block(self, state_vars, allow_degrees_of_freedom=True)
+        register_block(self, canonical_vars, allow_degrees_of_freedom=True)
 
         # We also need to set which ports are inlet and outlet, because 
         # IDAES doesn't store this information.

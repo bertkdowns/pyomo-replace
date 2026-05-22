@@ -8,7 +8,7 @@ from idaes.core.scaling.custom_scaler_base import CustomScalerBase
 @declare_process_block_class("SVCompressor")
 class SVCompressorData(CompressorData):
     """
-    Heater model, but it's set up with heat duty and deltaP as state variables.
+    Compressor model with canonical variables for specification management.
     """
 
     def build(self,*args, **kwargs):
@@ -18,14 +18,14 @@ class SVCompressorData(CompressorData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [(self.deltaP,"operation"), (self.efficiency_isentropic,"design")]
+        canonical_vars = [(self.deltaP,"operation"), (self.efficiency_isentropic,"design")]
         self.deltaP.fix(100) # Default value
         self.efficiency_isentropic.fix(0.8)
         
-        # Setup the default state variables.
+        # Setup the default canonical variables.
         # Allow_degrees_of_freedom is set to True because 
         # the inlet conditions are not fixed here.
-        register_block(self, state_vars, allow_degrees_of_freedom=True)
+        register_block(self, canonical_vars, allow_degrees_of_freedom=True)
 
         # We also need to set which ports are inlet and outlet, because 
         # IDAES doesn't store this information.
@@ -36,7 +36,7 @@ class SVCompressorData(CompressorData):
 # Trying to test scaling methods, decided not to include it.
 def scale_model(compressor):
     """
-    From the scaling factors of the state variables, set the scaling factors of everything else.
+    From the scaling factors of the canonical variables, set the scaling factors of everything else.
     """
     scaler = CustomScalerBase()
 

@@ -15,8 +15,8 @@ from pyomo.environ import (
 from model_initialisation import (
     record_model_definition,
     restore_model_definition,
-    fix_replaced_state_vars,
-    fix_state_vars,
+    fix_replaced_canonical_vars,
+    fix_canonical_vars,
     unfix_everything,
     staged_initialise,
 )
@@ -24,7 +24,7 @@ from model_initialisation import (
 @declare_process_block_class("SVValve")
 class SVValveData(ValveData):
     """
-    Heater model, but it's set up with heat duty and deltaP as state variables.
+    Valve model with canonical variables for specification management.
     """
 
     def build(self,*args, **kwargs):
@@ -33,14 +33,14 @@ class SVValveData(ValveData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [(self.valve_opening, "operation"), (self.Cv, "design")] # these can be used to calculate CV
+        canonical_vars = [(self.valve_opening, "operation"), (self.Cv, "design")] # these can be used to calculate Cv
         self.valve_opening.fix(0.9) # Default value
         self.Cv.fix(1)
         
-        # Setup the default state variables.
+        # Setup the default canonical variables.
         # Allow_degrees_of_freedom is set to True because 
         # the inlet conditions are not fixed here.
-        register_block(self, state_vars, allow_degrees_of_freedom=True)
+        register_block(self, canonical_vars, allow_degrees_of_freedom=True)
 
         # We also need to set which ports are inlet and outlet, because 
         # IDAES doesn't store this information.
@@ -108,8 +108,8 @@ class SVValveData(ValveData):
         # ---------------------------------------------------------------------
         # Solve unit.
         # 2 stage process:
-        # 1. unfix everything, fix our state vars, and solve.
-        # 2. if a state var has been replaced by something in this block,
+        # 1. unfix everything, fix our canonical vars, and solve.
+        # 2. if a canonical var has been replaced by something in this block,
         #  unfix it, fix that, and solve again.
         staged_initialise(blk, opt, outlvl)
         

@@ -4,8 +4,8 @@ Getting to zero degrees of freedom in a model can be time consuming, as you figu
 
 This library presents a way of ensuring you always have a square model, using a few simple rules:
 
-- All models must specify "State Variables" by default that need to be fixed to turn the model into a square problem.
-- If you want to fix a different variable, you must also specify which state variable it "replaces".
+- All models must specify "Canonical Variables" by default that need to be fixed to turn the model into a square problem.
+- If you want to fix a different variable, you must also specify which Canonical Variable it "replaces".
 
 
 
@@ -13,7 +13,7 @@ This library presents a way of ensuring you always have a square model, using a 
 
 See [example_idaes.py](./example_idaes.py)
 
-The default state variables for a heater are:
+The default Canonical Variables for a heater are:
 
 ```
 inlet.flow_mol
@@ -32,10 +32,11 @@ This means heat duty is unfixed, and so is inlet pressure. These will be calcula
 $ uv run example_idaes.py
 
 Replacements in block fs:
-  fs.h1.heat_duty -> fs.h1._enth_mol_outlet_ref
-  fs.h1._pressure_inlet_ref -> fs.h1._pressure_outlet_ref
+(Variable -> Replaced Canonical Variable)
+  fs.h1._enth_mol_outlet_ref -> fs.h1.heat_duty
+  fs.h1._pressure_outlet_ref -> fs.h1._pressure_inlet_ref
 
-Unreplaced state variables in block fs:
+Unreplaced canonical variables in block fs:
   fs.h1._flow_mol_inlet_ref
   fs.h1._enth_mol_inlet_ref
   fs.h1.deltaP
@@ -44,11 +45,11 @@ Unreplaced state variables in block fs:
 
 # Reasoning
 
-This approach ensures that you are *always working with a square model*. No more "Degrees of freedom is less than/greater than zero" errors ever again!
+This approach is designed to keep the model square through the replacement workflow, reducing the manual burden of degree-of-freedom management.
 
-The person that builds a model generally knows how many variables need to be fixed for the problem to become square. Specifying the list of state variables for a block (or unit operation) provides an implicit form of documentation on how the modeller expects it is most likely to be used.
+The person that builds a model generally knows how many variables need to be fixed for the problem to become square. Specifying the list of Canonical Variables for a block (or unit operation) provides an implicit form of documentation on how the modeller expects it is most likely to be used.
 
-Initialisation methods generally are designed to work based a certain set of fixed variables, usually the state variables. If so, by thinking in terms of replacement, you can provide an initial "guess" for every state variable you replace. These guesses can then be used by the initialisation routine to "guess" all the other variables. This saves you writing a different method of initialisation for every combination of fixed variables.
+Initialisation methods generally are designed to work from a certain set of fixed variables, usually the Canonical Variables. By thinking in terms of replacement, you can provide an initial guess for every Canonical Variable you replace. These guesses can then be used by the initialisation routine to estimate the remaining variables. This avoids writing a different initialisation method for every combination of fixed variables.
 
 # TODO
 

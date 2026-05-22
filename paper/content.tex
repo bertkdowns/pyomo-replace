@@ -416,8 +416,8 @@ be considered an independent system of equations.
 Thus, each block has its own set of Canonical Variables that are fixed by default to make it a square model.
 
 The Canonical Variables are chosen by first fixing all inlet variables. By
-convention, all inlet variables are automatically considered state
-variables, if and only if the inlet is not connected to an outlet. Then,
+convention, all inlet variables are automatically considered Canonical
+Variables if and only if the inlet is not connected to an outlet. Then,
 additional variables are fixed in the model until the model is square.
 These variables are also considered Canonical Variables.
 
@@ -455,8 +455,8 @@ met:
   with the new variable.
 \item
   The Canonical Variable must be chosen such that all equations in the model
-  are not structurally singular. This can be done by choosing a state
-  variable that is part of the Dulmage-Mendelson Over-constrained set 
+  are not structurally singular. This can be done by choosing a
+  Canonical Variable that is part of the Dulmage-Mendelson Over-constrained set 
   when the new variable was fixed \citep{lee2024model}.
 \end{itemize}
 
@@ -509,8 +509,8 @@ simply cannot work under the constraints we have applied on the system.
 However, there is a simple workaround to make these models possible. In
 this example, the flow balance constraint can be replaced with a
 variable that calculates the residual between the flows. This residual
-can be fixed to zero if one of the inlet flows is unfixed as a state
-variable. It is up to the model developer to decide which constraint
+can be fixed to zero if one of the inlet flows is unfixed as a Canonical
+Variable. It is up to the model developer to decide which constraint
 should instead be expressed as a residual, and to explain to the users
 of the model that the residual should be fixed. However, specifying the
 model this way has some advantages, as it will explicitly show the
@@ -663,7 +663,7 @@ requires that all inlet ports are registered as Canonical Variables:
 \end{verbatim}
 
 This registers the properties of all inlet ports that do not have
-another model upstream as state vars. This is done after the unit models
+another model upstream as Canonical Variables. This is done after the unit models
 have been fully defined and any connections between unit operations have
 been made. Once this method is called, the model should have zero
 degrees of freedom.
@@ -676,16 +676,16 @@ set values for the Canonical Variables, or replace them with other variables as 
 Pyomo-replace provides a method to print the list of Canonical Variables and any replacements that have been made:
 
 \begin{verbatim}
-> pprint_replacements(m.fs)
+> pprint_canonical_replacements(m.fs)
 \end{verbatim}
 
 This prints a list of all Canonical Variables, and any that are being
-replaced by other variables. As no state variables have yet been
+replaced by other variables. As no Canonical Variables have yet been
 replaced, it prints a list of all the variables for which a value must
 be set, or which must be replaced:
 
 \begin{verbatim}
-Unreplaced state variables in block fs:
+Unreplaced canonical variables in block fs:
   fs.preheater.overall_heat_transfer_coefficient  (design)
   fs.preheater.area  (design)
   fs.vaporizer.overall_heat_transfer_coefficient  (design)
@@ -722,28 +722,28 @@ Replacing a variable requires calling a function and passing the
 Canonical Variable to unfix and the new variable to fix:
 
 \begin{verbatim}
-> replace_state_var(m.fs.vaporizer.overall_heat_transfer_coefficient,
+> replace_canonical_var(m.fs.vaporizer.overall_heat_transfer_coefficient,
                     m.fs.vaporizer.cold_side_outlet.enth_mol)
-> replace_state_var(m.fs.preheater.overall_heat_transfer_coefficient,
+> replace_canonical_var(m.fs.preheater.overall_heat_transfer_coefficient,
                     m.fs.preheater.cold_side_outlet.enth_mol)
-> replace_state_var(m.fs.recuperator.overall_heat_transfer_coefficient,
+> replace_canonical_var(m.fs.recuperator.overall_heat_transfer_coefficient,
                     m.fs.recuperator.cold_side_outlet.enth_mol)
-> replace_state_var(m.fs.condenser.overall_heat_transfer_coefficient,
+> replace_canonical_var(m.fs.condenser.overall_heat_transfer_coefficient,
                     m.fs.condenser.hot_side_outlet.enth_mol)
-> replace_state_var(m.fs.pump.work_mechanical, 
+> replace_canonical_var(m.fs.pump.work_mechanical, 
                     m.fs.pump.outlet.pressure)
-> replace_state_var(m.fs.turbine.work_mechanical, 
+> replace_canonical_var(m.fs.turbine.work_mechanical, 
                     m.fs.turbine.outlet.pressure)
 \end{verbatim}
 
-Now we can run \texttt{pprint\_replacements} again, to show that
+Now we can run \texttt{pprint\_canonical\_replacements} again, to show that
 \texttt{work\_mechanical} has been replaced by \texttt{outlet.pressure}.
 
 \begin{verbatim}
-> pprint_replacements(m.fs)
+> pprint_canonical_replacements(m.fs)
 
 Replacements in block fs:
-(Variable -> Replaced State Var)
+(Variable -> Replaced Canonical Variable)
   fs.vaporizer._enth_mol_cold_side_outlet_ref 
       -> fs.vaporizer.overall_heat_transfer_coefficient  (design)
   fs.preheater._enth_mol_cold_side_outlet_ref 
@@ -757,7 +757,7 @@ Replacements in block fs:
   fs.turbine._pressure_outlet_ref 
       -> fs.turbine.work_mechanical  (operation)
 
-Unreplaced state variables in block fs:
+Unreplaced canonical variables in block fs:
   fs.preheater.area  (design)
   fs.vaporizer.area  (design)
   fs.vaporizer._flow_mol_hot_side_inlet_ref  (inlet)
@@ -1031,8 +1031,8 @@ manual specification changes in EOMs.
 \subsection{Switching between different types of
 analysis}\label{switching-between-different-types-of-analysis}}
 
-We have previously discussed using the car example that some state
-variables are design Canonical Variables (i.e \(k\)), and some are
+We have previously discussed using the car example that some
+Canonical Variables are design variables (i.e \(k\)), and some are
 manipulated variables (i.e \(y\)), and all other variables are dependent
 (i.e \(v\)).
 
@@ -1065,8 +1065,8 @@ problems.
 \begin{figure}
 \centering
 \includegraphics[width=\textwidth]{assets/initialisation-methods.drawio.png}
-\caption{Alternative initialisation routine, making use of state
-variables to avoid the need for different initialisation methods.}
+\caption{Alternative initialisation routine, making use of Canonical
+Variables to avoid the need for different initialisation methods.}
 \end{figure}
 
 The concept of ``Canonical Variables'' can simplify this process, by
@@ -1296,7 +1296,7 @@ are removing multiple variables and constraints simultaneously.
 fixed variables are coupled to specific Canonical Variables.}
 \end{figure}
 
-Consider this model of a pump connected to a heater, with all the state
+Consider this model of a pump connected to a heater, with all the
 variables defined. The inlet conditions are Canonical Variables, and so is
 the mechanical work of the pump, and the heat duty of the heater.
 However, the mechanical work and heat duty are replaced by the
@@ -1344,7 +1344,7 @@ on what variables to remove. There are two options:
 Both of these options require manual intervention from the modeller, as
 there is no clear path to maintain a solvable model. In comparison, when
 fixed variables are coupled to a set of Canonical Variables, it becomes straightforward to
-see when to unfix the variable: when the state var it is connected to is
+see when to unfix the variable: when the Canonical Variable it is connected to is
 removed.
 
 \hypertarget{analysing-interpretability}{%

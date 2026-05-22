@@ -13,7 +13,7 @@ from pyomo.environ import (
 @declare_process_block_class("SVHeatExchanger")
 class SVHeatExchangerData(HeatExchangerData):
     """
-    Heater model, but it's set up with heat duty and deltaP as state variables.
+    Heat exchanger model with canonical variables for specification management.
     """
 
     def build(self,*args, **kwargs):
@@ -23,7 +23,7 @@ class SVHeatExchangerData(HeatExchangerData):
         """
         super().build(*args, **kwargs)
 
-        state_vars = [(self.overall_heat_transfer_coefficient,"design"), (self.area,"design")]
+        canonical_vars = [(self.overall_heat_transfer_coefficient,"design"), (self.area,"design")]
         self.overall_heat_transfer_coefficient.fix(50) # Default value
         self.area.fix(5)
 
@@ -31,16 +31,16 @@ class SVHeatExchangerData(HeatExchangerData):
         cold_side = self.cold_side
         
         if self.config.hot_side.has_pressure_change:
-            state_vars.append((hot_side.deltaP,"design"))
+            canonical_vars.append((hot_side.deltaP,"design"))
             hot_side.deltaP.fix(0)
         if self.config.cold_side.has_pressure_change:
-            state_vars.append((cold_side.deltaP,"design"))
+            canonical_vars.append((cold_side.deltaP,"design"))
             cold_side.deltaP.fix(0)
         
-        # Setup the default state variables.
+        # Setup the default canonical variables.
         # Allow_degrees_of_freedom is set to True because 
         # the inlet conditions are not fixed here.
-        register_block(self, state_vars, allow_degrees_of_freedom=True)
+        register_block(self, canonical_vars, allow_degrees_of_freedom=True)
 
         # We also need to set which ports are inlet and outlet, because 
         # IDAES doesn't store this information.

@@ -18,11 +18,11 @@ def setup():
     register_block(
         m.fs.h1,
         [
-            m.fs.h1.inlet.flow_mol,
-            m.fs.h1.inlet.enth_mol,
-            m.fs.h1.inlet.pressure,
-            m.fs.h1.heat_duty,
-            m.fs.h1.deltaP,
+            (m.fs.h1.inlet.flow_mol, "inlet"),
+            (m.fs.h1.inlet.enth_mol, "inlet"),
+            (m.fs.h1.inlet.pressure, "inlet"),
+            (m.fs.h1.heat_duty, "operation"),
+            (m.fs.h1.deltaP, "design"),
         ],
     )
     return m
@@ -34,29 +34,29 @@ def test_replacements():
 
 
 def assert_replacement_works(m):
-    # Check initial state
-    assert len(all_state_vars(m.fs)) == 5
+    # Check initial canonical variables
+    assert len(all_canonical_vars(m.fs)) == 5
     assert len(list_replacements(m.fs)) == 0
     assert len(list_guesses(m.fs)) == 0
     # should also be the same at the block level
-    assert len(all_state_vars(m.fs.h1)) == 5
+    assert len(all_canonical_vars(m.fs.h1)) == 5
     assert len(list_replacements(m.fs.h1)) == 0
     assert len(list(list_guesses(m.fs.h1))) == 0
-    pprint_replacements(m.fs)
+    pprint_canonical_replacements(m.fs)
     print([v.name for v in list_available_vars(m.fs)])
 
     assert len(list(list_available_vars(m.fs))) == 6 # for the 3 outlet conditions, and the 3 references to those outlet conditions
 
     # Replace one variable
-    replace_state_var(m.fs.h1.heat_duty, m.fs.h1.outlet.enth_mol)
+    replace_canonical_var(m.fs.h1.heat_duty, m.fs.h1.outlet.enth_mol)
 
 
-    assert len(all_state_vars(m.fs)) == 5  # The number of state vars shouldn't change
-    assert m.fs.h1.outlet.enth_mol not in all_state_vars(m.fs)
-    assert m.fs.h1.heat_duty in all_state_vars(m.fs.h1)
+    assert len(all_canonical_vars(m.fs)) == 5  # The number of canonical vars shouldn't change
+    assert m.fs.h1.outlet.enth_mol not in all_canonical_vars(m.fs)
+    assert m.fs.h1.heat_duty in all_canonical_vars(m.fs.h1)
 
     assert len(list_replacements(m.fs)) == 1
-    # Replacements returns tuples of (state_var, new_var)
+    # Replacements returns tuples of (canonical_var, new_var)
     assert list_replacements(m.fs)[0][1] is m.fs.h1.outlet.enth_mol
     assert list_replacements(m.fs)[0][0] is m.fs.h1.heat_duty
 
@@ -64,5 +64,5 @@ def assert_replacement_works(m):
     assert len(list_guesses(m.fs)) == 1
     assert list_guesses(m.fs)[0] is m.fs.h1.heat_duty
 
-    assert m.fs.h1.heat_duty not in list_fixed_state_vars(m.fs.h1)
-    assert len(list_fixed_state_vars(m.fs)) == 4 # one state var is now a guess
+    assert m.fs.h1.heat_duty not in list_fixed_canonical_vars(m.fs.h1)
+    assert len(list_fixed_canonical_vars(m.fs)) == 4 # one canonical var is now a guess

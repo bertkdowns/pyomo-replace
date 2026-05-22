@@ -10,7 +10,7 @@ def setup():
     """
     Setup a simple flowsheet with a single heater unit operation.
     Only difference is this uses the SVHeater class which automatically registers
-    the state variables.
+    the canonical variables.
     """
     m = pyo.ConcreteModel()
     m.fs = FlowsheetBlock(dynamic=False)
