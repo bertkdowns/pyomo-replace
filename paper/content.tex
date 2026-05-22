@@ -149,11 +149,10 @@ over or under specified and \emph{what} a more sensible choice should
 be. The problem of squaring a model has not often been analysed within
 the domain that the models are used.
 
-Taking a step back to look at the larger picture, Luyben et. al
-\citep{luyben1996design} observed and discussed the correlation between
+Luyben et. al \citep{luyben1996design} observed a correlation between
 degrees of freedom in design-time models and in control models,
-especially for reactors and distillation columns. This is because the
-things you specify in design time, such as inlet flow rates or outlet
+especially for reactors and distillation columns. Quantities specified
+at design time, such as inlet flow rates or outlet
 temperatures, need to be controlled in the real factory, usually by
 valves. They argue that calculating the number of controlled parameters
 in a plant is an easier way to understand the degrees of freedom of a
@@ -362,9 +361,20 @@ the Canonical Variables.
 \hypertarget{design-and-operation-variables}{
 \subsubsection{A method for switching between design, performance rating, and operation case studies}\label{design-and-operation-variables}}
 
-In a design case, the design variables can be replaced by dependent variables. This allows a modeller to design a process that meets target conditions. In a performance rating scenario, the design is fixed. Since the model has already defined which variables are design variables, and there is a link between each design variable and the dependent variable replacing it, it is easy to switch between design and performance rating by simply removing the replacements on the design variables. This will still maintain a fully defined model.
+In a design case, the design variables can be replaced by dependent
+variables to meet target conditions. In a performance-rating scenario,
+the design is fixed. Because the model already defines which variables
+are design variables, and records the link between each design variable
+and the dependent variable replacing it, switching between design and
+performance rating only requires removing the replacements on the design
+variables. The model remains fully defined.
 
-Replacing an operating variable with a dependent variable models the effect of a control system on the operating variable when the control system is working effectively. However, those replacements can be removed to model the effect of a change in an operating variable on the rest of the process. This again maintains a fully defined model. Thus, variable replacement allows a modeller to easily switch between design, performance rating, and operation case studies with minimal effort.
+Replacing an operating variable with a dependent variable represents the
+effect of effective control on that operating variable. Removing those
+replacements instead models the effect of changing the operating
+variable on the rest of the process. This also maintains a fully defined
+model. Variable replacement therefore supports switching between design,
+performance-rating, and operation studies with minimal manual changes.
 
 
 \hypertarget{introduction-to-pyomo-replace}{%
@@ -578,15 +588,14 @@ However, the plant data includes stream pressures and temperatures, so
 the mechanical work and heat transfer coefficients are not actually set
 in this model. Instead, they are replaced with the pressure or
 temperature measured on the stream flowing out of the unit operations.
-Because of the replacement system, it is easy to see exactly why each of
+Because of the replacement system, it is clear why each of
 these temperatures and pressures need to be specified, and why the other
 streams (e.g from the recouperator to the condenser) do not need their
 properties specified.
 
-Those familiar with control systems may note that the variable
-replacement approach for the pump looks similar to the control scheme of
-a pump in a P\&ID Diagram, where the amount of work the pump does is
-controlled by a PID tuner that reads from a pressure sensor. These are replacements that replace operating variables.
+For the pump, the variable replacement pattern is similar to a control
+scheme in a P\&ID diagram, where pump work is adjusted from a pressure
+measurement. These are replacements of operating variables.
 The heat exchangers are specified by their outlet temperatures, which replace the
 heat transfer coefficient design variable.
 
@@ -661,7 +670,7 @@ degrees of freedom.
 
 Typically, at this point in a normal IDAES model, there would be many degrees of freedom and
 the user would need to figure out which variables to fix to make the model square.
-However, in pyomo-replace, the model is already square, and the user can simply
+However, in pyomo-replace, the model is already square, and the user can
 set values for the Canonical Variables, or replace them with other variables as required.
 
 Pyomo-replace provides a method to print the list of Canonical Variables and any replacements that have been made:
@@ -671,9 +680,9 @@ Pyomo-replace provides a method to print the list of Canonical Variables and any
 \end{verbatim}
 
 This prints a list of all Canonical Variables, and any that are being
-replaced by other variables. As we have not yet replaced any state
-variables, it would simply print a list of all the variables that we
-need to either set a value for, or replace:
+replaced by other variables. As no state variables have yet been
+replaced, it prints a list of all the variables for which a value must
+be set, or which must be replaced:
 
 \begin{verbatim}
 Unreplaced state variables in block fs:
@@ -709,8 +718,8 @@ In this case, we want to specify the outlet conditions of the heat exchangers to
 heat transfer coefficients we should design for. For numerical stability and following best practices with this property package,
 we are specifying the outlet enthalpy instead of the outlet temperature. Likewise, we also specify the outlet pressure of the pump and
 turbine instead of the mechanical work.
-Replacing a variable is as simple as calling a function,
-passing the Canonical Variable to unfix and the new variable to fix:
+Replacing a variable requires calling a function and passing the
+Canonical Variable to unfix and the new variable to fix:
 
 \begin{verbatim}
 > replace_state_var(m.fs.vaporizer.overall_heat_transfer_coefficient,
@@ -770,19 +779,24 @@ Then a value can be specified for all the variables that are replacing Canonical
 have not been replaced. This model can then be initialized and solved using the standard pyomo and idaes
 libraries.
 
-To switch this model from a design case to a performance rating case, we can simply remove the replacements on the design variables:
+To switch this model from a design case to a performance-rating case,
+the replacements on the design variables can be removed:
 
 \begin{verbatim}
 deactivate_category(m.fs, "design")
 \end{verbatim}
 
 This re-fixes the heat exchanger overall heat transfer coefficients, 
-but keeps the replacements on the operating variables. This is scalable to larger models, as the design variables are tagged ahead of time,
-meaning that it is always easy to switch between these cases. Because of the coupling between design variables and their replaced variables, the model includes
+but keeps the replacements on the operating variables. This is scalable
+to larger models because the design variables are tagged ahead of time.
+Because of the coupling between design variables and their replaced variables, the model includes
 information about which dependent variables need to be removed when the design variables are fixed again.
 
 To switch the model to a ``simulation" case, where all design and operating variables are fixed, we can also remove the replacements on the operating variables.
-This will revert to the original set of initial variables. Thus, it becomes easy to use the model for a variety of use cases, as variable replacement and the tagging of the design and operating variables provides the additional metadata required.
+This reverts to the original set of canonical variables. Variable
+replacement and the tagging of design and operating variables therefore
+provide the metadata required to use the model across multiple use
+cases.
 
 \hypertarget{dynamic-tank}{%
 \subsection{Dynamic Tank}\label{dynamic-tank}}
@@ -900,9 +914,9 @@ We thought about trying a degrees of freedom approach, but were
 concerned that it would be much too confusing as it didn't provide the
 user with any direction on how to get started.
 
-One of the major advantages of Variable Replacement that we have noticed
-in a GUI is that it provides additional context for unit operations. In
-a GUI program, it is very easy to visually show that context by
+One advantage of Variable Replacement in a GUI is that it provides
+additional context for unit operations. In a GUI, that context can be
+shown by
 styling fixed Canonical Variables, guesses, and calculated variables
 differently, and to show the links between variables.
 
@@ -949,7 +963,7 @@ explicit specification-management layer that records intent, preserves
 consistency, and makes specification changes easier to interpret and
 automate.
 
-A useful analogy may be in the study of programming language theory.
+A useful comparison comes from programming language theory.
 Functional and Imperative programming languages are both turing
 complete, but certain problems are better represented in an imperative
 language, while other problems are more simply expressed in a functional
@@ -1033,9 +1047,9 @@ create tools to switch between design and operation modes.
 
 Likewise, a robustness test typically involves fixing only the decision
 variables (both design and operation) and calculating how sensitive the
-dependent variables are to changes. Again, this is easy to do in the
-variable replacement framework by simply undoing all replacements, as
-the decision variables are the Canonical Variables.
+dependent variables are to changes. In the variable replacement
+framework, this can be done by undoing all replacements, as the
+decision variables are the Canonical Variables.
 
 \hypertarget{simplified-initialisation}{%
 \subsection{\texorpdfstring{Simplified Initialisation
@@ -1329,7 +1343,7 @@ on what variables to remove. There are two options:
 
 Both of these options require manual intervention from the modeller, as
 there is no clear path to maintain a solvable model. In comparison, when
-fixed variables are coupled to a set of Canonical Variables, it is easy to
+fixed variables are coupled to a set of Canonical Variables, it becomes straightforward to
 see when to unfix the variable: when the state var it is connected to is
 removed.
 
@@ -1362,7 +1376,7 @@ flowsheet. The coupling between Canonical Variables and fixed variables
 provides a more interpretable way of reasoning about the model, bringing
 the relationships between variables to the forefront. Tagging Canonical Variables
 with metadata about their real-world meaning, such as if they are design parameters 
-or operating parameters, makes it easy to switch between different use cases.
+or operating parameters, supports switching between different use cases.
 Additionally, enforcing a standard set of Canonical Variables and requiring the user
 to provide initial guesses for them makes it simpler to
 build initialisation and scaling methods. The Ahuora Digital Twin
