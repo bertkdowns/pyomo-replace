@@ -15,7 +15,6 @@ from pyomo.environ import (
 from model_initialisation import (
     record_model_definition,
     restore_model_definition,
-    fix_replaced_canonical_vars,
     fix_canonical_vars,
     unfix_everything,
     staged_initialise,

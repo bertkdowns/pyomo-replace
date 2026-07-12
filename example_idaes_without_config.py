@@ -24,8 +24,8 @@ register_block(
     ],
 )
 
-replace_canonical_var(m.fs.h1.heat_duty, m.fs.h1.outlet.enth_mol)
-replace_canonical_var(m.fs.h1.inlet.pressure, m.fs.h1.outlet.pressure)
+replacement_state(m.fs).replace(m.fs.h1.heat_duty, m.fs.h1.outlet.enth_mol)
+replacement_state(m.fs).replace(m.fs.h1.inlet.pressure, m.fs.h1.outlet.pressure)
 
 
-pprint_canonical_replacements(m.fs)
+print(replacement_state(m.fs).replacements_in(m.fs))

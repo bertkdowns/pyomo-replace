@@ -1,7 +1,7 @@
 from idaes.models.unit_models import Heater
 from idaes.core import declare_process_block_class
 from idaes.models.control.controller import PIDControllerData
-from model import register_block, replace_canonical_var
+from model import register_block, replacement_state
 
 
 @declare_process_block_class("SVPIDController")
@@ -25,4 +25,4 @@ class SVPIDControllerData(PIDControllerData):
 
         manipulated_var = self.config.manipulated_var
         # replace the manipulated variable ref with the setpoint (we can assume this is wanted so may as well do it automatically)
-        replace_canonical_var(manipulated_var, self.setpoint)
+        replacement_state(self).replace(manipulated_var, self.setpoint)

@@ -1,5 +1,5 @@
 from idaes.models.unit_models.valve import ValveData
-from model import is_child_of
+from model import replacement_state
 from idaes.core.util.exceptions import PropertyNotSupportedError, InitializationError
 import idaes.logger as idaeslog
 from idaes.core.solvers import get_solver
@@ -74,26 +74,6 @@ def fix_canonical_vars(blk):
     for var, _category in blk._state_vars:
         var.fix()
 
-def fix_replaced_canonical_vars(blk):
-    """
-    If any canonical variables have been replaced by other variables in this block,
-    fix those variables instead of the canonical vars.
-
-    The reason for doing this is to get the model closer to what the final solve state will be.
-    We can only do this for variables that are children of this block.
-
-    Any other variables that were fixed on this block but are not tied to a canonical variable in this block
-    will not be fixed during initialization, as they require degrees of freedom from
-    other unit operations so fixing them here would overconstrain the model.
-    
-    This requires that the block has canonical variables registered on the block.
-    Usually this is done in the build() method of the block.
-    """
-    for canonical_var, new_var in blk._replacements:
-        if is_child_of(new_var, blk):
-            new_var.fix() 
-            canonical_var.unfix()
-
 def fix_inlets(blk):
     """
     Fix all inlet port canonical variables.
@@ -131,32 +111,33 @@ def staged_initialise(blk: Block, opt, outlvl=idaeslog.NOTSET):
     init_log = idaeslog.getInitLogger(blk.name, outlvl, tag="unit")
     solve_log = idaeslog.getSolveLogger(blk.name, outlvl, tag="unit")
 
-    fix_canonical_vars(blk)
-    #fix_inlets(blk)
+    with replacement_state(blk).initialisation_context(blk):
+        fix_canonical_vars(blk)
+        #fix_inlets(blk)
 
 
-    # Step 1: Solve with canonical vars fixed
-    with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-        res = opt.solve(blk, tee=slc.tee)
-    init_log.info_high("Staged Initialisation: Canonical variable solve: {}.".format(idaeslog.condition(res)))
-    
-    if not check_optimal_termination(res):
-        raise InitializationError(
-            f"{blk.name} failed to initialize with canonical variables. Please check "
-            f"the output logs for more information, or try different guesses."
-        )
+        # Step 1: Solve with canonical vars fixed
+        with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
+            res = opt.solve(blk, tee=slc.tee)
+        init_log.info_high("Staged Initialisation: Canonical variable solve: {}.".format(idaeslog.condition(res)))
 
-    fix_replaced_canonical_vars(blk)
+        if not check_optimal_termination(res):
+            raise InitializationError(
+                f"{blk.name} failed to initialize with canonical variables. Please check "
+                f"the output logs for more information, or try different guesses."
+            )
 
-    with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
-        res = opt.solve(blk, tee=slc.tee)
-    init_log.info_high("Staged Initialisation: Replaced var solve: {}.".format(idaeslog.condition(res)))
-    
-    if not check_optimal_termination(res):
-        raise InitializationError(
-            f"{blk.name} failed to initialize with replaced vars. Please check "
-            f"the output logs for more information, or make sure the model is well-posed."
-        )
+        replacement_state(blk).activate_local_replacements_for_initialisation(blk)
+
+        with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
+            res = opt.solve(blk, tee=slc.tee)
+        init_log.info_high("Staged Initialisation: Replaced var solve: {}.".format(idaeslog.condition(res)))
+
+        if not check_optimal_termination(res):
+            raise InitializationError(
+                f"{blk.name} failed to initialize with replaced vars. Please check "
+                f"the output logs for more information, or make sure the model is well-posed."
+            )
 
     
 

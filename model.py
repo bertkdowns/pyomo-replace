@@ -1,4 +1,7 @@
-from pyomo.environ import ConcreteModel, Block, Var, Expression, Constraint
+from contextlib import contextmanager
+from dataclasses import dataclass
+
+from pyomo.environ import ConcreteModel, Block, Var, Expression, Constraint, value
 from idaes.core.util.model_statistics import degrees_of_freedom
 from pyomo.contrib.incidence_analysis import IncidenceGraphInterface
 from pyomo.network import Port, Arc
@@ -23,6 +26,192 @@ def is_child_of(block, component):
             return True
         parent = parent.parent_block()
     return False
+
+
+def _var_data_objects(var: Var | IndexedVar):
+    if isinstance(var, IndexedVar):
+        return list(var.values())
+    return [var]
+
+
+def _fix_var(var: Var | IndexedVar):
+    for v in _var_data_objects(var):
+        v.fix()
+
+
+def _unfix_var(var: Var | IndexedVar):
+    for v in _var_data_objects(var):
+        v.unfix()
+
+
+def _snapshot_var(var: Var | IndexedVar):
+    return [(v, v.fixed, value(v, exception=False)) for v in _var_data_objects(var)]
+
+
+def _restore_var(snapshot):
+    for var, was_fixed, var_value in snapshot:
+        if var_value is not None:
+            var.set_value(var_value)
+        if was_fixed:
+            var.fix()
+        else:
+            var.unfix()
+
+
+@dataclass(eq=False)
+class ReplacementRecord:
+    canonical_var: Var | IndexedVar
+    replacement_var: Var | IndexedVar
+    canonical_block: Block
+    replacement_block: Block
+
+    def as_tuple(self):
+        return (self.canonical_var, self.replacement_var)
+
+    def is_in(self, block: Block):
+        return is_child_of(block, self.canonical_var)
+
+    def is_local_to(self, block: Block):
+        return is_child_of(block, self.canonical_var) and is_child_of(
+            block, self.replacement_var
+        )
+
+
+class ReplacementState:
+    """
+    Authoritative replacement state for a flowsheet.
+    """
+
+    def __init__(self, flowsheet: Block):
+        self.flowsheet = flowsheet
+        self.records: list[ReplacementRecord] = []
+
+    def append(self, canonical_var: Var | IndexedVar, replacement_var: Var | IndexedVar):
+        record = ReplacementRecord(
+            canonical_var=canonical_var,
+            replacement_var=replacement_var,
+            canonical_block=canonical_var.parent_block(),
+            replacement_block=replacement_var.parent_block(),
+        )
+        self.records.append(record)
+        return record
+
+    def replace(self, canonical_var: Var | IndexedVar, replacement_var: Var | IndexedVar):
+        canonical_block = canonical_var.parent_block()
+        replacement_block = replacement_var.parent_block()
+        if canonical_block.flowsheet() is not self.flowsheet or replacement_block.flowsheet() is not self.flowsheet:
+            raise ValueError(
+                f"Variables {canonical_var} and {replacement_var} do not share flowsheet {self.flowsheet.name}."
+            )
+
+        if not hasattr(canonical_block, "_state_vars") or not is_in(
+            canonical_var, get_canonical_vars(canonical_block)
+        ):
+            raise ValueError(
+                f"Variable {canonical_var} is not a registered canonical variable in the block {canonical_block.name}."
+            )
+        if not is_fixed(canonical_var):
+            raise ValueError(f"Variable {canonical_var} must be fixed to be replaced.")
+        if is_in(replacement_var, get_canonical_vars(replacement_block)):
+            raise ValueError(
+                f"Variable {replacement_var} is a registered canonical variable in the block {replacement_block.name}."
+            )
+        if is_fixed(replacement_var):
+            raise ValueError(
+                f"Variable {replacement_var} must not be fixed to be used as a replacement."
+            )
+
+        _unfix_var(canonical_var)
+        _fix_var(replacement_var)
+
+        igraph = IncidenceGraphInterface(self.flowsheet)
+        _var_partition, constraint_partition = igraph.dulmage_mendelsohn()
+        if constraint_partition.unmatched:
+            _fix_var(canonical_var)
+            _unfix_var(replacement_var)
+            raise ValueError(
+                f"Replacing variable {canonical_var} with {replacement_var} causes a structural singularity in {self.flowsheet.name}. These variables cannot be replaced with the given system configuration."
+                "Unmatched constraints: "
+                f"{[constraint.name for constraint in constraint_partition.unmatched]}"
+            )
+
+        return self.append(canonical_var, replacement_var)
+
+    def replacements_in(self, block: Block):
+        return [record.as_tuple() for record in self.records if record.is_in(block)]
+
+    def guesses_in(self, block: Block):
+        return [
+            record.canonical_var
+            for record in self.records
+            if record.is_in(block) and not is_fixed(record.canonical_var)
+        ]
+
+    def find(self, canonical_var: Var | IndexedVar):
+        for record in self.records:
+            if record.canonical_var is canonical_var:
+                return record
+        return None
+
+    def remove(self, canonical_var: Var | IndexedVar):
+        for i, record in enumerate(self.records):
+            if record.canonical_var is canonical_var:
+                del self.records[i]
+                return record
+        return None
+
+    def undo(self, canonical_var: Var | IndexedVar):
+        record = self.remove(canonical_var)
+        if record is None:
+            raise ValueError(
+                f"No replacement has been made for variable {canonical_var} in {self.flowsheet.name}."
+            )
+        _fix_var(record.canonical_var)
+        _unfix_var(record.replacement_var)
+        return record.as_tuple()
+
+    def deactivate_category(self, category_name: str, block: Block):
+        deactivated = []
+        for canonical_var, replacement_var in self.replacements_in(block):
+            if get_category(canonical_var) == category_name:
+                self.undo(canonical_var)
+                deactivated.append((canonical_var, replacement_var))
+        return deactivated
+
+    def reactivate(self, canonical_var: Var | IndexedVar, replacement_var: Var | IndexedVar):
+        return self.replace(canonical_var, replacement_var)
+
+    @contextmanager
+    def initialisation_context(self, block: Block):
+        records = [record for record in self.records if record.is_in(block)]
+        snapshots = {
+            record: _snapshot_var(record.replacement_var) for record in records
+        }
+        try:
+            for record in records:
+                _fix_var(record.canonical_var)
+                _unfix_var(record.replacement_var)
+            yield self
+        finally:
+            for record in records:
+                _unfix_var(record.canonical_var)
+                _restore_var(snapshots[record])
+
+    def activate_local_replacements_for_initialisation(self, block: Block):
+        activated = []
+        for record in self.records:
+            if record.is_local_to(block):
+                _unfix_var(record.canonical_var)
+                _fix_var(record.replacement_var)
+                activated.append(record.as_tuple())
+        return activated
+
+
+def replacement_state(block: Block) -> ReplacementState:
+    flowsheet = block.flowsheet() or block
+    if not hasattr(flowsheet, "_replacement_state"):
+        flowsheet._replacement_state = ReplacementState(flowsheet)
+    return flowsheet._replacement_state
 
 def register_block(block, canonical_vars: list[tuple[Var,str]], allow_degrees_of_freedom=False):
     """
@@ -57,7 +246,6 @@ def register_block(block, canonical_vars: list[tuple[Var,str]], allow_degrees_of
         )
 
     block._state_vars = canonical_vars
-    block._replacements = []  # List of (old_var, new_var) tuples for replacements
 
 def is_fixed(var : Var | IndexedVar):
     """
@@ -78,8 +266,9 @@ def get_canonical_vars(block):
     """
     List all canonical variables in the block
     """
-    if hasattr(block, "_state_vars"):
-        return [v for v, category in block._state_vars]
+    state_vars = getattr(block, "_state_vars", None)
+    if isinstance(state_vars, list):
+        return [v for v, category in state_vars]
     return []
 
 def all_canonical_vars(block):
@@ -104,31 +293,11 @@ def all_canonical_var_categories(block: Block):
             categories.extend(b._state_vars)
     return categories
 
-def list_guesses(block):
-    """
-    List all guess variables (canonical variables that have been replaced) in the block and its sub-blocks recursively.
-    """
-    return [var for var in all_canonical_vars(block) if not is_fixed(var)]
-
-
 def list_fixed_canonical_vars(block):
     """
     List all fixed canonical variables in the block and its sub-blocks recursively.
     """
     return [var for var in all_canonical_vars(block) if is_fixed(var)]
-
-
-def list_replacements(block):
-    """
-    List all replacements made in the block and its sub-blocks recursively.
-    """
-    replacements = []
-    if hasattr(block, "_replacements"):
-        replacements.extend(block._replacements)
-    for b in block.component_objects(Block, descend_into=True):
-        if hasattr(b, "_replacements"):
-            replacements.extend(b._replacements)
-    return replacements
 
 
 def _safe_equal(var1,var2):
@@ -196,112 +365,6 @@ def is_in(obj, container):
     return any(obj is x for x in container)
 
 
-def replace_canonical_var(canonical_var, new_var):
-    canonical_var_parent = canonical_var.parent_block()
-    new_var_parent = new_var.parent_block()
-    parent_block = canonical_var_parent.flowsheet()
-    if parent_block is None:
-        raise ValueError(
-            f"Variables {canonical_var} and {new_var} do not share a common parent block."
-        )
-
-    # The canonical var must be currently fixed, and must be registered as a canonical var.
-    if not hasattr(canonical_var_parent, "_state_vars") or not is_in(
-        canonical_var, get_canonical_vars(canonical_var_parent)
-    ):
-        raise ValueError(
-            f"Variable {canonical_var} is not a registered canonical variable in the block {canonical_var_parent.name}."
-        )
-    if not is_fixed(canonical_var):
-        raise ValueError(f"Variable {canonical_var} must be fixed to be replaced.")
-    # The new var must not be a canonical var, and must not be fixed.
-    if is_in(
-        new_var, get_canonical_vars(new_var_parent)
-    ):
-        raise ValueError(
-            f"Variable {new_var} is a registered canonical variable in the block {new_var_parent.name}."
-        )
-    if is_fixed(new_var):
-        raise ValueError(
-            f"Variable {new_var} must not be fixed to be used as a replacement."
-        )
-
-    # Note: We can't check degrees of freedom because it could be fixed by external constraints.
-    # Validate that degrees of freedom is zero before the replacement
-    # if degrees_of_freedom(parent_block) != 0:
-    #     raise ValueError(
-    #         f"Block {parent_block.name} must have zero degrees of freedom before replacement. Something is wrong with the model formulation. It currently has {degrees_of_freedom(parent_block)} degrees of freedom."
-    #     )
-    # Perform the replacement
-    canonical_var.unfix()
-    new_var.fix()
-
-    # if degrees_of_freedom(parent_block) != 0:
-    #     # Revert the replacement
-    #     state_var.fix()
-    #     new_var.unfix()
-    #     raise ValueError(
-    #         f"Block {parent_block.name} must have zero degrees of freedom after replacement. Did you try to replace an indexed variable with one which has a different size?"
-    #     )
-
-    # Validate that this does not cause an over-constrained or under-constrained set.
-    # https://pyomo.readthedocs.io/en/6.8.0/contributed_packages/incidence/tutorial.dm.html
-    igraph = IncidenceGraphInterface(parent_block)
-    var_dm_partition, constraint_dm_partion = igraph.dulmage_mendelsohn()
-
-    #  ignore unmatched variables, as some of them may be fixed by outside constraints.
-    # however, if internal constraints are unmatched, that is definitely over-defined.
-    # this does not guarantee that the system is well-defined, as we would have to check both at the model level.
-    if len(constraint_dm_partion.unmatched) > 0:
-        # Revert the replacement
-        canonical_var.fix()
-        new_var.unfix()
-        raise ValueError(
-            f"Replacing variable {canonical_var} with {new_var} causes a structural singularity in {parent_block.name}. These variables cannot be replaced with the given system configuration."
-            "Unmatched constraints: "
-            f"{list(i.name for i in constraint_dm_partion.unmatched)}"
-        )
-
-    # Record the replacement (old_var, new_var) so that it can be tracked.
-
-    if not hasattr(parent_block, "_replacements"):
-        parent_block._replacements = []
-
-    parent_block._replacements.append((canonical_var, new_var))
-
-def undo_replacement(canonical_var):
-    parent_block = canonical_var.parent_block().flowsheet() # for now the flowsheet is where the replacements live. see replace_canonical_var.
-    if not hasattr(parent_block, "_replacements"):
-        raise ValueError(f"No replacements have been made in the parent block {parent_block.name} of variable {canonical_var}.")
-    replacements = parent_block._replacements
-    for i, (old_var, new_var) in enumerate(replacements):
-        if old_var is canonical_var:
-            # Revert the replacement
-            old_var.fix()
-            new_var.unfix()
-            # Remove the replacement from the list
-            del replacements[i]
-            # return the replacement that was undone so the user knows what variable is now unfixed.
-            return (old_var, new_var)
-
-def deactivate_category(category_name: str, block) -> list[tuple[Var, Var]]:
-    """
-    remove all replaced variables in the model with the given category name. This is useful for deactivating all design variables
-    """
-    replacements = list_replacements(block)
-    deactivated = []
-    for canonical_var, replaced_var in replacements:
-        category = get_category(canonical_var)
-        if category == category_name:
-            undo_replacement(canonical_var)
-            deactivated.append((canonical_var, replaced_var))
-    return deactivated
-
-def reactivate_vars(vars_to_reactivate: list[tuple[Var, Var]]):
-    for canonical_var, replaced_var in vars_to_reactivate:
-        replace_canonical_var(canonical_var, replaced_var)
-
-
 def fix_port(port: Port):
     """
     To allow the degrees of freedom check to work,
@@ -318,32 +381,6 @@ def unfix_port_vars(vars_to_unfix):
     for var in vars_to_unfix:
         var.unfix()
     
-
-def pprint_canonical_replacements(block):
-    """
-    Pretty print all canonical variables and replacements in the block.
-    """
-
-    replacements = list_replacements(block)
-    if len(replacements) == 0:
-        print(f"No replacements in block {block.name}")
-    else:
-        print(f"Replacements in block {block.name}:")
-        print("(Variable -> Replaced Canonical Variable)")
-        for old_var, new_var in list_replacements(block):
-            print(f"  {new_var} -> {old_var}  ({get_category(old_var)})")
-        print()
-    
-    canonical_vars = list_fixed_canonical_vars(block)
-    if len(canonical_vars) == 0:
-        print(f"No other canonical variables in block {block.name}")
-    else:
-        print(f"Unreplaced canonical variables in block {block.name}:")
-        for var in list_fixed_canonical_vars(block):
-            print(f"  {var}  ({get_category(var)})")
-
-
-
 
 obj_iter_kwds = dict(
     ctype=Port,
@@ -368,7 +405,6 @@ def register_inlet_ports(block):
             # Initialise block if there are no canonical vars yet
             if not hasattr(parent_block, "_state_vars"):
                 parent_block._state_vars = []
-                parent_block._replacements = []
             # Add all variables in the port to the canonical vars if not already present
             for var_name in port.vars:
                 var = getattr(port, var_name)

@@ -8,3 +8,8 @@ dependencies = [
     "pyomo==6.9.2",
     "ahuora_compounds@git+https://github.com/waikato-ahuora-smart-energy-systems/PropertyPackages.git@v0.0.29",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
