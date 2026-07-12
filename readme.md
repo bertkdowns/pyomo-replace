@@ -7,7 +7,7 @@ This library presents a way of ensuring you always have a square model, using a 
 - All models must specify "Canonical Variables" by default that need to be fixed to turn the model into a square problem.
 - If you want to fix a different variable, you must also specify which Canonical Variable it "replaces".
 
-
+Draft paper: https://waikatouniversitynz-my.sharepoint.com/:b:/g/personal/bd65_students_waikato_ac_nz/IQD19XG8vU5lSaS02vq7ZDPxAWzb8WaVgXSaCUI5gEM5jms?e=Z0FyFL
 
 # Example usage:
 
