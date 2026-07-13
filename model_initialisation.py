@@ -1,5 +1,4 @@
 from idaes.models.unit_models.valve import ValveData
-from model import replacement_state
 from idaes.core.util.exceptions import PropertyNotSupportedError, InitializationError
 import idaes.logger as idaeslog
 from idaes.core.solvers import get_solver
@@ -64,16 +63,6 @@ def restore_model_definition(blk: Block, state: dict):
     from_json(blk, sd=state, wts=StoreSpec.value_isfixed(True)) # only load the fixed values
 
 
-def fix_canonical_vars(blk):
-    """
-    Fix the canonical variables for this block.
-
-    This requires that the block has canonical variables registered on the block.
-    Usually this is done in the build() method of the block.
-    """
-    for var, _category in blk._state_vars:
-        var.fix()
-
 def fix_inlets(blk):
     """
     Fix all inlet port canonical variables.
@@ -111,8 +100,10 @@ def staged_initialise(blk: Block, opt, outlvl=idaeslog.NOTSET):
     init_log = idaeslog.getInitLogger(blk.name, outlvl, tag="unit")
     solve_log = idaeslog.getSolveLogger(blk.name, outlvl, tag="unit")
 
-    with replacement_state(blk).initialisation_context(blk):
-        fix_canonical_vars(blk)
+    specifications = (blk.flowsheet() or blk).specifications
+    with specifications.replacements_suspended_in(blk):
+        for canonical_variable in specifications.canonical_variables_in(blk):
+            canonical_variable.fix()
         #fix_inlets(blk)
 
 
@@ -127,7 +118,11 @@ def staged_initialise(blk: Block, opt, outlvl=idaeslog.NOTSET):
                 f"the output logs for more information, or try different guesses."
             )
 
-        replacement_state(blk).activate_local_replacements_for_initialisation(blk)
+        for replacement in specifications.internal_replacements_in(blk):
+            specifications.replace(
+                replacement.canonical_variable,
+                replacement.replacement_variable,
+            )
 
         with idaeslog.solver_log(solve_log, idaeslog.DEBUG) as slc:
             res = opt.solve(blk, tee=slc.tee)

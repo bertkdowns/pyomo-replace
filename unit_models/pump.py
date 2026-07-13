@@ -1,7 +1,7 @@
 from idaes.models.unit_models import Heater
 from idaes.core import declare_process_block_class
 from idaes.models.unit_models.pressure_changer import PumpData
-from model import register_block
+from model import SpecificationState
 
 
 @declare_process_block_class("SVPump")
@@ -23,7 +23,9 @@ class SVPumpData(PumpData):
         # Setup the default canonical variables.
         # Allow_degrees_of_freedom is set to True because 
         # the inlet conditions are not fixed here.
-        register_block(self, canonical_vars, allow_degrees_of_freedom=True)
+        specifications = SpecificationState.for_flowsheet(self.flowsheet())
+        specifications.register(canonical_vars)
+        specifications.validate(self, allow_degrees_of_freedom=True)
 
         # We also need to set which ports are inlet and outlet, because 
         # IDAES doesn't store this information.

@@ -10,12 +10,12 @@ m = pyo.ConcreteModel()
 m.fs = FlowsheetBlock(dynamic=False)
 m.fs.pp = iapws95.Iapws95ParameterBlock()
 m.fs.compressor = SVCompressor(property_package=m.fs.pp)
-register_inlet_ports(m.fs)
+m.fs.specifications.register_inlet_ports(m.fs)
 
-print(replacement_state(m.fs).replacements_in(m.fs))
+print(m.fs.specifications.replacements_in(m.fs))
 
-replacement_state(m.fs).replace(m.fs.compressor.deltaP, m.fs.compressor.outlet.pressure)
-print(replacement_state(m.fs).replacements_in(m.fs))
+m.fs.specifications.replace(m.fs.compressor.deltaP, m.fs.compressor.outlet.pressure)
+print(m.fs.specifications.replacements_in(m.fs))
 
 
 m.fs.compressor.inlet.flow_mol.fix(1)

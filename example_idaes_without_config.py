@@ -13,8 +13,8 @@ m.fs.h1.inlet.flow_mol.fix(1)
 m.fs.h1.inlet.enth_mol.fix(3000)
 m.fs.h1.inlet.pressure.fix(1e5)
 
-register_block(
-    m.fs.h1,
+SpecificationState.for_flowsheet(m.fs)
+m.fs.specifications.register(
     [
         (m.fs.h1.inlet.flow_mol, "operation"),
         (m.fs.h1.inlet.enth_mol, "operation"),
@@ -24,8 +24,8 @@ register_block(
     ],
 )
 
-replacement_state(m.fs).replace(m.fs.h1.heat_duty, m.fs.h1.outlet.enth_mol)
-replacement_state(m.fs).replace(m.fs.h1.inlet.pressure, m.fs.h1.outlet.pressure)
+m.fs.specifications.replace(m.fs.h1.heat_duty, m.fs.h1.outlet.enth_mol)
+m.fs.specifications.replace(m.fs.h1.inlet.pressure, m.fs.h1.outlet.pressure)
 
 
-print(replacement_state(m.fs).replacements_in(m.fs))
+print(m.fs.specifications.replacements_in(m.fs))

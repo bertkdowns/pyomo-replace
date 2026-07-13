@@ -17,7 +17,7 @@ def setup():
     m.fs.pp = iapws95.Iapws95ParameterBlock()
     m.fs.h1 = SVHeater(property_package=m.fs.pp, has_pressure_change=True)
 
-    register_inlet_ports(m.fs)
+    m.fs.specifications.register_inlet_ports(m.fs)
 
     m.fs.h1.inlet.flow_mol.fix(1)
     m.fs.h1.inlet.enth_mol.fix(3000)

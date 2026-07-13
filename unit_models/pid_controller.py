@@ -1,7 +1,7 @@
 from idaes.models.unit_models import Heater
 from idaes.core import declare_process_block_class
 from idaes.models.control.controller import PIDControllerData
-from model import register_block, replacement_state
+from model import SpecificationState
 
 
 @declare_process_block_class("SVPIDController")
@@ -21,8 +21,10 @@ class SVPIDControllerData(PIDControllerData):
         # Setup the default canonical variables.
         # Allow_degrees_of_freedom is set to True because 
         # the inlet conditions are not fixed here.
-        register_block(self, canonical_vars, allow_degrees_of_freedom=True)
+        specifications = SpecificationState.for_flowsheet(self.flowsheet())
+        specifications.register(canonical_vars)
+        specifications.validate(self, allow_degrees_of_freedom=True)
 
         manipulated_var = self.config.manipulated_var
         # replace the manipulated variable ref with the setpoint (we can assume this is wanted so may as well do it automatically)
-        replacement_state(self).replace(manipulated_var, self.setpoint)
+        specifications.replace(manipulated_var, self.setpoint)
