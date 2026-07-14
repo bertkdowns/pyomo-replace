@@ -1,7 +1,7 @@
 from idaes.models.unit_models import Heater
 from idaes.core import declare_process_block_class
 from idaes.models.unit_models.pressure_changer import CompressorData
-from model import SpecificationState
+from specifications import SpecificationState
 from idaes.core.scaling.util import get_scaling_factor, set_scaling_factor
 from idaes.core.scaling.custom_scaler_base import CustomScalerBase
 

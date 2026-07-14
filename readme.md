@@ -11,7 +11,7 @@ Draft paper: https://waikatouniversitynz-my.sharepoint.com/:b:/g/personal/bd65_s
 
 # Example usage:
 
-See [example_idaes.py](./example_idaes.py)
+See [examples/idaes.py](./examples/idaes.py)
 
 The default Canonical Variables for a heater are:
 
@@ -29,7 +29,7 @@ In this example, heat duty is replaced with outlet enthalpy, and the inlet press
 This means heat duty is unfixed, and so is inlet pressure. These will be calculated from the outlet enthalpy and pressure instead.
 
 ```
-$ uv run example_idaes.py
+$ uv run python -m examples.idaes
 
 Replacements in block fs:
 (Variable -> Replaced Canonical Variable)

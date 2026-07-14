@@ -1,4 +1,3 @@
-from model import *
 import pyomo.environ as pyo
 from unit_models.compressor import SVCompressor
 from idaes.core import FlowsheetBlock

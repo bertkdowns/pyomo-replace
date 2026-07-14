@@ -1,4 +1,4 @@
-from model import *
+from specifications import SpecificationState
 import pyomo.environ as pyo
 from unit_models.heater import SVHeater
 from idaes.core import FlowsheetBlock

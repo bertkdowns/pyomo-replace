@@ -1,7 +1,7 @@
 from idaes.models.unit_models import Heater
 from idaes.core import declare_process_block_class
 from idaes.models.unit_models.pressure_changer import TurbineData
-from model import SpecificationState
+from specifications import SpecificationState
 
 
 @declare_process_block_class("SVTurbine")

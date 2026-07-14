@@ -1,6 +1,6 @@
 from idaes.core import declare_process_block_class
 from idaes.models.unit_models.valve import ValveData
-from model import SpecificationState
+from specifications import SpecificationState
 
 from idaes.core.util.exceptions import PropertyNotSupportedError, InitializationError
 import idaes.logger as idaeslog
@@ -12,7 +12,7 @@ from pyomo.environ import (
     Reference,
     Var,
 )
-from model_initialisation import (
+from initialisation import (
     record_model_definition,
     restore_model_definition,
     fix_canonical_vars,
