@@ -43,6 +43,14 @@ Pyomo-replace:
 Use specs.fix(var,value) to fix variables as shown in the examples at the start of specify_model. If you want to fix a variable that is not a canonical variable, you must choose a canonical variable to replace it by using specs.replace(canonical_var,replacement_var)
 ```
 
+For the base case, we also try with and without allowing the agent to specify additional "guess variables". This is because the replacement method has a staged initialisation method, and allowing the agent to specify guesses can compensate for initialisation being simpler.
+
+```
+Do not set guesses to variables that are not fixed; allow the model to solve for those values
+...
+You may set guesses for other variables using var.set_value(), only as required to enable the model to solve. They should be approximate order-of-magnitude guesses, rather than exact solve values.
+```
+
 We prompt the AI once, and do not provide any follow-up from there.
 
 ### Results
