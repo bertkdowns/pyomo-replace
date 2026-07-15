@@ -1,3 +1,7 @@
+# This runs on the version of the platform with unit operations updated
+# to support specification management. 
+# See https://github.com/waikato-ahuora-smart-energy-systems/Ahuora-Adaptive-Digital-Twin-Platform/tree/7a41e554ea5f974a5efb1527287139cfa75809db
+
 """Steady-state geothermal-heated n-butane power-loop flowsheet."""
 
 from __future__ import annotations

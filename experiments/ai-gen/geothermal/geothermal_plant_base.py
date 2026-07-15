@@ -1,3 +1,5 @@
+# This runs on the following version of the platform and ahuora-builder libraries:
+# https://github.com/waikato-ahuora-smart-energy-systems/Ahuora-Adaptive-Digital-Twin-Platform/tree/5bdf7faeb0955f35ea88fd539d43a0c13fe7855a
 """Steady-state geothermal-heated n-butane power-loop flowsheet."""
 
 from __future__ import annotations

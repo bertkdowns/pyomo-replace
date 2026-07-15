@@ -18,7 +18,6 @@ from typing import Any
 
 
 MODEL_COMMAND = re.compile(r"\bpython(?:\d+(?:\.\d+)*)?\b.*\.py\b")
-SUCCESS_MARKER = re.compile(r"optimal solution found|terminate(?:d)? optimally", re.I)
 
 HEADERS = (
     "case",
@@ -34,7 +33,6 @@ HEADERS = (
     "lines_removed",
     "model_runs",
     "model_run_failures",
-    "reported_optimal_runs",
 )
 
 
@@ -71,7 +69,7 @@ def extract_metrics(session_path: Path, root: Path) -> dict[str, object]:
     updated = time.get("updated")
     duration_s = (updated - created) / 1000 if created is not None and updated is not None else None
 
-    patches = lines_added = lines_removed = model_runs = model_run_failures = optimal_runs = 0
+    patches = lines_added = lines_removed = model_runs = model_run_failures = 0
     for message in session.get("messages", []):
         for part in message.get("parts", []):
             if part.get("type") != "tool":
@@ -92,9 +90,6 @@ def extract_metrics(session_path: Path, root: Path) -> dict[str, object]:
             metadata = state.get("metadata", {})
             if metadata.get("exit") not in (None, 0):
                 model_run_failures += 1
-            output = state.get("output", "")
-            if SUCCESS_MARKER.search(output):
-                optimal_runs += 1
 
     relative_case = session_path.parent.relative_to(root).as_posix()
     return {
@@ -111,7 +106,6 @@ def extract_metrics(session_path: Path, root: Path) -> dict[str, object]:
         "lines_removed": lines_removed,
         "model_runs": model_runs,
         "model_run_failures": model_run_failures,
-        "reported_optimal_runs": optimal_runs,
     }
 
 

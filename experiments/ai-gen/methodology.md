@@ -20,7 +20,7 @@ The template file for pyomo-replace also includes the standard two-stage initial
 
 ### Prompt
 
-We then run a clean opencode session, with a prompt such as the following:
+We then run a clean opencode session (using v1.18.1), with a prompt such as the following:
 
 ```
 You are provided with an IDAES model file (geothermal_plant.py) and a markdown file (geothermal_plant.md) describing the scenario it models. While the structure of the model is present, the correct variables in the model have not been fixed or set to the correct values.
@@ -53,6 +53,8 @@ We export results using the following command:
 ```bash
 opencode export <sessionID> > session.json
 ```
+
+It can be viewed again with `opencode import session.json` and then `opencode -s <ses_...imported-id-here>`
 
 Some of the things to look for in the results include:
 
