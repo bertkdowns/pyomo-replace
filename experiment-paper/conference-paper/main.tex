@@ -10,7 +10,7 @@ Bert Downs\textsuperscript{a*}, Tim Walmsley\textsuperscript{a}}
 \textsuperscript{a} Ahuora Centre for Smart Energy Systems, University of Waikato, Hamilton, New Zealand\\
 \textsuperscript{*} Corresponding Author: \href{mailto:bert.downs@waikato.ac.nz}{bert.downs@waikato.ac.nz}}
 \renewcommand{\PaperAbstract}{%
-Equation-oriented process models expose equations and variables but rarely expose their intended specification choices. Consequently, composing models, changing study intent, and configuring models with software tools depend on implicit modeller knowledge. We present \texttt{pyomo-replace}, a Pyomo/IDAES framework that represents ordinary specifications as Canonical Variables and alternative specifications as tracked Replacements. Activating a Replacement fixes a non-canonical target while releasing its Canonical Variable as a Guess Variable, preserving the baseline specification count and recording the exchange. Specification Categories and a staged initialization contract further make the configuration inspectable and reusable. We demonstrate the framework on a geothermal power-loop flowsheet and evaluate the complete workflow in constrained AI-agent configuration tasks. Across single recorded \texttt{gpt-5.6-terra} sessions, the replacement workflow required less time and fewer failed model executions than direct fixing for geothermal and heat-integration flowsheets. A three-effect milk-evaporator case required fewer executions but not less elapsed time, consistent with its smaller number of Replacements. These proof-of-concept results do not establish general AI performance or numerical robustness; they indicate that explicit specification interfaces can make process models more composable and operable by software clients.}
+Equation-oriented process models can be reused for different studies, but their equations rarely identify which inputs are ordinarily fixed or which input should be released when a new target is imposed. We present \texttt{pyomo-replace}, a Pyomo/IDAES framework that records ordinary inputs as Canonical Variables and exchanges them one-for-one for alternative Specifications through tracked Replacements. A released Canonical Variable retains its value as a Guess Variable, and the baseline Specification set can be temporarily restored for initialization. We demonstrate the approach on a geothermal power loop and evaluate it in constrained AI-agent specification tasks on three process flowsheets, with one recorded session per condition. In the geothermal and heat-integration cases, where direct workflows required multiple patches, replacement used fewer patches, less time, and fewer tokens; the no-guess geothermal direct workflow also failed to report optimal termination. In the milk-evaporator case, every workflow reported optimal termination after one patch, and replacement showed a small time and code-size overhead relative to direct fixing. These proof-of-concept results suggest that the interface has a modest adoption cost but can reduce repeated correction when direct specification is difficult.}
 \renewcommand{\PaperKeywords}{Artificial Intelligence, Equation-Oriented Modelling, Pyomo, Process Modelling, Simulation}
 \renewcommand{\PaperCopyrightText}{%
 \textcopyright\ 2027 by the authors. Licensed to PSEcommunity.org and PSE Press under the CC-BY-SA 4.0 license.}
@@ -31,24 +31,43 @@ Equation-oriented models (EOMs) provide a common set of first-principles equatio
 
 For example, a pump may be specified by mechanical work in a performance-rating calculation, but by outlet pressure in a measured-condition study. A heat exchanger may be specified by its heat-transfer coefficient in one study and by an outlet thermal condition in another. In a conventional AML workflow, either change is a collection of low-level operations: fix one variable, unfix another, provide initial values, and assess the resulting formulation. The relationship between the physical target and the released quantity is left in scripts, comments, or modeller knowledge.
 
-This is an interface problem rather than only a variable-counting problem. A degree-of-freedom (DoF) diagnostic can identify an under- or over-specified formulation, but cannot say which specification is semantically appropriate to exchange, why it was exchanged, or how the altered model should be initialized. This information is important when components are composed into flowsheets and when graphical clients, workflow tools, or coding agents configure a supplied model.
+This is an interface problem rather than only a variable-counting problem. A degree-of-freedom (DoF) diagnostic can identify an under- or over-specified formulation, but cannot say which Specification is semantically appropriate to exchange, why it was exchanged, or how the altered model should be initialized. This information is important when components are composed into flowsheets and when graphical clients, workflow tools, or coding agents specify a supplied model.
 
-We present \texttt{pyomo-replace}, a specification-management framework for Pyomo/IDAES EOMs. The framework makes a baseline specification explicit through \emph{Canonical Variables}, and represents an alternative specification as a tracked \emph{Replacement}. The contribution is a software interface and controlled state transition, not a new solver or a claim that a zero DoF count guarantees solvability. We demonstrate the interface on a geothermal power loop and evaluate the complete framework workflow in constrained AI-agent configuration tasks. The evaluation is deliberately narrow: it asks whether the interface makes it easier for one coding agent to specify prepared chemical-process flowsheets.
+We present \texttt{pyomo-replace}, a framework to manage which variables supply the Specifications in a Pyomo/IDAES EOM. The framework makes a baseline Specification set explicit through \emph{Canonical Variables}, and represents an alternative Specification as a tracked \emph{Replacement}. The contribution is a software interface that gives users a starting point for specifying a flowsheet assembled from predefined unit operations without requiring intimate knowledge of every underlying equation. Replacements preserve substantial flexibility in selecting alternative Specifications while enforcing a one-for-one exchange and structural check. We demonstrate the interface on a geothermal power loop, then evaluate it with an AI coding agent on prepared chemical-process flowsheets.
 
-\section{Specification Interface}
-\subsection{Problem Context}
-For a model with variables $x$, active equality constraints $c(x)=0$, and fixed variables, a useful operational count is
+\section{Background and Related Work}
+\subsection{Equation-Oriented Models and Composition}
+Equation-oriented flowsheeting represents coupled process units as a simultaneous equation system, avoiding a fixed calculation order and supporting large nonlinear simulation and optimization problems \cite{shacham1982equation,biegler2010nonlinear,dowling2015framework}. AMLs provide a declarative layer over that system: symbolic variables and constraints can be indexed, manipulated programmatically, and grouped into hierarchical components rather than assembled directly in a solver representation. In Pyomo these components are Blocks, which can contain reusable equations and nested components; IDAES builds on them with process unit models and property packages \cite{hart2011pyomo,lee2021idaes}.
+
+Composition adds another interface. Pyomo Network collects related variables in Ports, connects compatible Ports with Arcs, and expands those Arcs into algebraic equality constraints \cite{pyomoNetworkDocs}. In an IDAES flowsheet, a Block commonly represents a unit operation, while its inlet and outlet Ports expose the variables used to connect that unit to the rest of the process. These abstractions allow a modeller to assemble a larger equation-oriented model without interacting directly with every equation inside each unit.
+
+This has resulted in a rich ecosystem of reusable unit models, property packages, and flowsheet templates. However, intended use is not always evident from equations and model structure alone; modellers rely on documentation, degrees-of-freedom analysis, and structural diagnostics to determine how to specify an unfamiliar unit. This is partly because of the flexibility inherent in equation-oriented modelling: for example, a pump may be specified by mechanical work in one study, outlet pressure in another, and pressure ratio in a third. A standard interface is difficult to define when the appropriate Specification changes with study intent.
+
+\subsection{Specification, Diagnostics, and Initialization}
+
+Model diagnostics are standard tools for understanding the behaviour of an unfamiliar unit model. For a model with variables $x$, active equality constraints $c(x)=0$, and fixed variables, a useful operational count is
 \begin{equation}
   \operatorname{DoF}_{\mathrm{count}} = n_x - n_c - n_f.
 \end{equation}
-This count is a valuable assembly diagnostic, but zero counted DoF does not prove independent equations, structural nonsingularity, physical feasibility, or numerical convergence \cite{bunus2001debugging,lee2024model}. Process knowledge, structural diagnostics, scaling, and initialization remain necessary. The framework therefore manages specification bookkeeping while complementing rather than replacing those tools.
+This count is a valuable assembly diagnostic, but zero counted DoF does not prove independent equations, structural nonsingularity, physical feasibility, or numerical convergence. Incidence analysis and Dulmage--Mendelsohn decomposition can locate structurally under- and overdetermined subsets, while Jacobian-based tools address numerical pathologies that a scalar count cannot reveal \cite{bunus2001debugging,parker2023dulmage,lee2024model,allan2025jacobian}. These diagnostics identify problematic structure; they do not encode which physically meaningful variable a modeller intended to exchange or why. Process knowledge, structural diagnostics, scaling, and initialization therefore remain necessary.
 
-The specification task also changes on composition. A variable that must be fixed for an isolated block may be determined by an upstream connection in a flowsheet; unconnected inlets instead require external conditions. The flowsheet author must know the expected specification of each unit, select meaningful study targets, and retain suitable guesses when the configuration changes. Existing initialization procedures are usually written for one expected fixed-variable configuration \cite{SAFDARNEJAD201539,lee2021idaes}.
+Process design and operation also motivate alternative specification choices. Design and control degrees-of-freedom analysis relates process design choices to quantities that must be set or controlled in operation \cite{luyben1996design}. Process simulators expose neighboring mechanisms, such as an Adjust block that varies one quantity until another reaches a target \cite{dwsimAdjust}. Such target-seeking features solve a selected calculation, whereas the present work records the persistent relationship between a newly imposed target and the ordinary input released in its place; it is not a controller or optimization method.
+
+Changing the fixed-variable set also changes initialization. Warm starts, decomposition, simplified models, and staged release are established ways to approach difficult nonlinear formulations \cite{SAFDARNEJAD201539,dowling2015framework}. Unit initializers are commonly written for an expected Specification set, and recycle flowsheets require propagated values or tear guesses \cite{lee2021idaes,pyomoNetworkDocs}. An alternative Specification therefore creates not only a counting decision but also a need to retain useful guesses and define an intermediate Specification set from which to initialize.
+
+\subsection{Explicit Interfaces and Software Clients}
+The framework is also related to software contracts and provenance. Design by contract argues for making component expectations and invariants part of an interface rather than leaving them to caller convention \cite{meyer1997object}. Provenance standards similarly distinguish an inspectable record of how an artifact or state was produced from the artifact alone \cite{w3cProvOverview}. We use these ideas narrowly: \texttt{pyomo-replace} does not capture complete computational provenance, but it turns a pair of otherwise independent fix/unfix calls into a queryable record with an invariant on the number of Specifications.
+
+Repository-level coding-agent benchmarks motivate evaluating whether such an interface is usable by a software client, while also showing the need for execution-based and carefully bounded claims \cite{jimenez2024swebench}. Tool-using-agent work provides a plausible reason that constrained operations can be preferable to open-ended code changes, but does not establish that benefit for process modelling \cite{yao2023react}. The agent study in this paper is therefore an evaluation context for the specification interface, not a claim about general AI capability.
+
+Taken together, prior work provides equations and reusable model structure, diagnostics for a selected formulation, target-seeking calculations, and initialization methods. The narrower gap addressed here is a flowsheet-owned interface that declares the ordinary set of Specifications, records an exchange when study intent changes, and makes the initialization consequence inspectable.
+
+\section{Specification Interface}
 
 \subsection{Framework Semantics}
 A \emph{Specification} declares that a Canonical Variable, or its active Replacement, supplies one degree of freedom. A Canonical Variable is registered as the ordinary specification for its owning block and is labelled with a \emph{Specification Category}, such as inlet, operation, design, or initial condition. Registration fixes newly registered variables; after flowsheet connections are expanded, unconnected inlet-port variables can also be registered.
 
-A Replacement substitutes a non-canonical variable for one Canonical Variable. Activation fixes the replacement variable and unfixes the Canonical Variable, which becomes a \emph{Guess Variable}: it retains a value for initialization but is no longer fixed during the requested solve. Table~\ref{tab:concepts} summarizes the visible contract. This one-for-one exchange preserves the baseline number of fixed Specifications, not a proof that the new specification is suitable.
+A Replacement substitutes a non-canonical variable for one Canonical Variable. Activation fixes the replacement variable and unfixes the Canonical Variable, which becomes a \emph{Guess Variable}: it retains a value for initialization but is no longer fixed during the requested solve. Table~\ref{tab:concepts} summarizes the visible contract. This one-for-one exchange preserves the baseline number of Specifications; it does not prove that the new Specification is suitable.
 
 \begin{table}[htp!]
   \caption{Core elements of the explicit specification interface.}
@@ -82,13 +101,15 @@ specs.register_inlet_ports(model.fs)
 specs.replace(unit.heat_duty,
               unit.outlet.enth_mol)
 \end{lstlisting}
-Inspection methods report Canonical Variables, Replacement Candidates, active Replacements, and Guess Variables for a flowsheet or block. A category can be deactivated to undo its associated Replacements, returning the relevant Canonical Variables to their baseline role.
+Inspection methods report Canonical Variables, Replacement Candidates, active Replacements, and Guess Variables for a flowsheet or block.
 
 \subsection{Staged Initialization}
-The explicit relationship also supports a reusable initialization contract. During initialization, the framework can temporarily suspend the relevant Replacements: Canonical Variables are fixed and replacement variables are released. A unit or flowsheet is initialized in this expected baseline configuration, then the requested Replacements are restored and the model is solved again. This lets the released Canonical Variable supply a retained guess without requiring each unit initializer to enumerate every valid alternative specification. It remains a workflow convention, not a convergence guarantee.
+The explicit relationship also supports a reusable initialization contract. During initialization, the framework can temporarily suspend the relevant Replacements: Canonical Variables are fixed and replacement variables are released. A unit or flowsheet is initialized with its expected baseline Specification set, then the requested Replacements are restored and the model is solved again. This lets the released Canonical Variable act as a Guess Variable with a retained value without requiring each unit initializer to enumerate every valid alternative Specification. It remains a workflow convention, not a convergence guarantee.
 
 \section{Geothermal Demonstration}
-The main demonstration is a steady-state geothermal-heated $n$-butane power loop comprising a pump, turbine, recuperator, preheater, vaporizer, condenser, water mixer, and recycle. It uses Helmholtz property packages for water and $n$-butane. Heat exchangers register overall heat-transfer coefficient and area as design Canonical Variables; pumps and turbines register mechanical work as an operation Canonical Variable and efficiency as a design Canonical Variable. Unconnected inlet-port variables are registered after the arcs are expanded.
+The main demonstration is a steady-state geothermal-heated $n$-butane power loop comprising a pump, turbine, recuperator, preheater, vaporizer, condenser, water mixer, and recycle. It uses Helmholtz property packages for water and $n$-butane. Heat exchangers register overall heat-transfer coefficient and area as design Canonical Variables; the pump and turbine each register mechanical work as an operation Canonical Variable and efficiency as a design Canonical Variable. These declarations expose the ordinary inputs contributed by each reusable unit model rather than requiring the flowsheet author to recover them from its equations.
+
+Flowsheet composition determines the remaining Specifications. Arcs constrain connected inlet variables from upstream outlets, so intermediate streams do not require independent conditions. After the Arcs are expanded, the framework registers only unconnected process and utility inlet variables. Together with the unit-level declarations, these variables provide a complete baseline set of Specifications from which a client can begin, reducing the trial-and-error of selecting enough fixed variables across the assembled flowsheet.
 
 \begin{figure}[htp!]
   \centering
@@ -97,56 +118,57 @@ The main demonstration is a steady-state geothermal-heated $n$-butane power loop
   \label{fig:geothermal}
 \end{figure}
 
-The executable replacement-enabled case fixes a condenser shell outlet temperature of 274.970 K in place of the condenser overall heat-transfer coefficient. The coefficient becomes a Guess Variable. More generally, an outlet enthalpy can replace a heat-transfer coefficient when sizing an exchanger to a thermal target, and an outlet pressure can replace pump or turbine work in an operating study. Figure~\ref{fig:geothermal} illustrates this distinction: the physical target is explicit, while the baseline variable remains available to initialize the subsequent solve.
+The executable replacement-enabled case fixes a condenser shell outlet temperature of 274.970 K in place of the condenser overall heat-transfer coefficient. The coefficient becomes a Guess Variable. With the coefficient fixed, the same condenser equations can rate installed equipment and calculate its outlet condition; with the temperature fixed instead, they calculate the coefficient required to meet that thermal target. No unit equation is reformulated. The same pattern allows an outlet enthalpy to replace a heat-transfer coefficient in an exchanger-design study, or an outlet pressure to replace pump or turbine work when the downstream pressure is known.
 
-The recycle is initialized using Pyomo sequential decomposition and tear-stream guesses. The sequence first suspends Replacements, initializes and solves the canonical configuration, restores the requested Replacements, and finally solves the target configuration. This example demonstrates auditable study reconfiguration; it does not imply that all target values are feasible or that all replacements initialize successfully.
+Figure~\ref{fig:geothermal} makes the intent of each change visible: the physical target is recorded together with the ordinary engineering input released in its place. Thus a specified outlet pressure is distinguishable from an independently fixed stream property, and the client can see that mechanical work is to be calculated. The model retains the flexibility of choosing alternative Specifications while preserving the reason for each choice.
 
-\section{Agent-Assisted Configuration Evaluation}
+The recycle is initialized using Pyomo sequential decomposition and tear-stream guesses. The sequence first suspends Replacements, initializes and solves with the baseline Specification set, restores the requested Replacements, and finally solves with the requested Specification set. The released heat-transfer coefficient acts as a Guess Variable with a retained value, so the ordinary unit initialization procedure can be reused rather than rewritten for the outlet-temperature Specification. This example demonstrates an explicit change of study intent and reusable initialization; it does not imply that all target values are feasible or that all Replacements initialize successfully.
+
+\section{Agent-Assisted Specification Evaluation}
 \subsection{Method}
-We evaluated whether an explicit specification interface makes a constrained coding task easier for \texttt{gpt-5.6-terra}. Each clean OpenCode session received a Markdown scenario and a Python template with the flowsheet topology, unit operations, arcs, diagnostics, initialization, and solve routines. The agent could edit only \texttt{specify\_model}, was prompted once with no human follow-up, and was asked to run the model until it solved according to the supplied scenario.
+We evaluated whether an explicit specification interface makes a constrained coding task easier for \texttt{gpt-5.6-terra}. Each clean OpenCode session received a Markdown scenario and a prepared Python template with topology, diagnostics, initialization, and solve routines. The agent could edit only \texttt{specify\_model}, was prompted once without human follow-up, and was asked to run the model until it solved according to the scenario.
 
 The direct template required \texttt{var.fix()} calls. The replacement template exposed Canonical Variables, examples, replacement diagnostics, and the staged initialization contract; it required a Replacement before fixing a non-canonical variable. A second direct condition allowed approximate \texttt{set\_value()} guesses. The experiment therefore compares complete workflows, not the isolated causal effect of replacement metadata. It covers a geothermal power loop, a water-only heat-integration and steam-generation flowsheet, and a three-effect milk evaporator with mechanical-vapor-recompression recycles. The prepared templates constrain the task to specification, rather than open-ended model construction.
 
-We recorded session duration, model executions, failed executions, patches, and tokens from exported sessions. A successful execution was inferred from the recorded non-failed final execution; no independent accuracy metric was calculated. There is one session per condition, so the observations have no uncertainty intervals and should not be treated as a performance distribution.
+From each exported session, we recorded duration, token usage, patch count, and cumulative lines added and removed. Token usage is the sum of input, output, and reasoning tokens and excludes cache reads. A patch is one recorded \texttt{apply\_patch} call. Net lines is the cumulative number of additions minus removals across those patches, rather than a final-file size difference. There is one session per condition, so the observations have no uncertainty intervals and should not be treated as a performance distribution.
 
 \subsection{Results}
-Table~\ref{tab:results} reports the session-level results. For geothermal, the replacement workflow took 110.5~s, compared with 348.9~s for direct fixing and 385.3~s for direct fixing with guesses. It required two model runs and one failed run, versus five and four in the direct condition. For heat integration, the replacement workflow took 207.4~s versus 378.8~s and 426.5~s, with three runs and two failures versus nine and six in the direct condition.
+Table~\ref{tab:results} reports the session-level results. Each patch records a revision to \texttt{specify\_model}. The geothermal direct workflows required two and eight patches, and the two-patch run did not report optimal termination; replacement reported optimal termination in one patch. Heat-integration required eight and ten patches for the direct workflows but two for replacement. In these sessions, lower patch counts coincided with substantially lower times and token usage, consistent with less search where direct fixing required repeated revision.
 
 \begin{table}[!ht]
-  \caption{Recorded single-session agent results. Failures include environment and execution failures, not only solver failures.}
+  \caption{Recorded single-session agent results. Tokens exclude cache reads; net lines are cumulative additions minus removals across patches. Optimal indicates whether the final solve reported optimal termination.}
   \label{tab:results}
   \centering
-  \footnotesize
+  \scriptsize
   \renewcommand{\arraystretch}{1.02}
-  \begin{tabular}{@{}llrrr@{}}
+  \setlength{\tabcolsep}{2pt}
+  \begin{tabular}{@{}llrrrrc@{}}
     \toprule
-    \textbf{Flowsheet} & \textbf{Workflow} & \textbf{Time (s)} & \textbf{Runs} & \textbf{Failures} \\
+    \textbf{Case} & \textbf{Workflow} & \textbf{Time (s)} & \textbf{Tokens} & \textbf{Patches} & \shortstack{\textbf{Net} \\ \textbf{lines}} & \textbf{Optimal} \\
     \midrule
-    Geothermal & Direct & 348.9 & 5 & 4 \\
-    Geothermal & Direct + guesses & 385.3 & 10 & 7 \\
-    Geothermal & Replacement & 110.5 & 2 & 1 \\
-    Heat integration & Direct & 378.8 & 9 & 6 \\
-    Heat integration & Direct + guesses & 426.5 & 12 & 11 \\
-    Heat integration & Replacement & 207.4 & 3 & 2 \\
-    Milk evaporator & Direct & 109.6 & 3 & 2 \\
-    Milk evaporator & Direct + guesses & 93.5 & 3 & 2 \\
-    Milk evaporator & Replacement & 113.8 & 2 & 1 \\
+    Geothermal & Direct & 348.9 & 153,276 & 2 & 33 & No \\
+    Geothermal & Direct + guess & 385.3 & 114,202 & 8 & 57 & Yes \\
+    Geothermal & Replacement & 110.5 & 72,874 & 1 & 46 & Yes \\
+    Heat integ. & Direct & 378.8 & 171,555 & 8 & 24 & Yes \\
+    Heat integ. & Direct + guess & 426.5 & 164,585 & 10 & 79 & Yes \\
+    Heat integ. & Replacement & 207.4 & 64,202 & 2 & 53 & Yes \\
+    Milk evap. & Direct & 109.6 & 54,234 & 1 & 26 & Yes \\
+    Milk evap. & Direct + guess & 93.5 & 64,651 & 1 & 26 & Yes \\
+    Milk evap. & Replacement & 113.8 & 54,366 & 1 & 28 & Yes \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-The milk-evaporator case qualifies this pattern. The replacement workflow used one fewer model run and failed run, but took 113.8~s, marginally longer than direct fixing and 20.3~s longer than direct fixing with guesses. It contains only three repeated compressor outlet-pressure Replacements for compressor-work Canonical Variables; much of the scenario is specified identically in all conditions. Thus, it demonstrates that the workflow applies to a coupled multi-domain recycle flowsheet, but provides less opportunity for the interface to reduce the specification-search burden.
-
-Qualitatively, direct workflows required the agent to infer a sufficient set of fixed variables and, for difficult cases, devise initialization guesses. The replacement workflow instead presented a constrained operation: state a scenario-facing target and the Canonical Variable it replaces. The recorded replacement reports preserve this provenance, while staged initialization retains released values as guesses. These features are consistent with the lower iteration observed in the geothermal and heat-integration sessions.
+The milk evaporator provides the contrasting easy case: every workflow reported optimal termination with one patch. Replacement was slightly slower than both direct workflows, used effectively the same tokens as direct fixing, and added two net lines. This is consistent with a small cost for declarations and for learning a project-specific interface that cannot be assumed to have appeared in the model's pretraining data, although the experiment does not isolate the cause. In the two cases where direct workflows required repeated correction, replacement instead had the lowest patch count, duration, and token use.
 
 \section{Discussion and Conclusions}
-\texttt{pyomo-replace} treats specification intent as an explicit interface for reusable EOM components. Canonical Variables define the baseline contract, categories convey their role, and Replacements record which physical target now supplies a Specification and which Canonical Variable is a Guess Variable. This makes configuration state inspectable by clients without changing the underlying equations or solver.
+\texttt{pyomo-replace} makes specification intent an explicit interface. Canonical Variables define the baseline contract; Replacements record the new physical target and the Canonical Variable retained as a Guess Variable. Clients can inspect this Specification state without changing equations or solvers.
 
-The agent study provides bounded evidence that this interface can make prepared process models more machine-operable. In the geothermal and heat-integration sessions, the complete replacement workflow was associated with fewer model executions, fewer failures, and shorter session durations. The milk-evaporator result shows that this is not a universal time advantage, especially when a task contains few replacements. The results are not evidence of general AI capability, human usability, or universal numerical robustness.
+The study suggests that the interface's value depends on task difficulty. Replacement reduced patches, time, and tokens where direct specification required repeated revision, and reported optimal termination where the no-guess geothermal direct workflow did not. The one-patch milk case instead exposed a small adoption cost whose value depends on reducing correction in harder Specification tasks.
 
-Several limitations are important. There was one run per condition, one agent model, related prompts, and prepared templates. OpenCode versions varied across cases. The replacement template also includes diagnostics, examples, and staged initialization that are absent from the direct templates, so the comparison cannot isolate metadata from API, prompt, or initialization effects. Some failed runs were environment or interpreter failures rather than numerical failures. Finally, preserving a counted DoF does not establish structural nonsingularity, feasibility, physical validity, or convergence.
+There was one session per condition, one agent model, prepared templates, and varying OpenCode versions. Replacement metadata, diagnostics, examples, and staged initialization were absent from direct templates, so their effects cannot be isolated. Patch count indicates repeated editing but is not a validated measure of difficulty or correctness. The results do not establish general AI capability, human usability, or numerical robustness; preserving counted DoF likewise does not establish nonsingularity, feasibility, or convergence.
 
-Despite these limits, an explicit specification interface provides a useful boundary for process-model libraries and automation tools. It records configuration provenance, supports switching between study intents, and offers a reusable initialization contract. Future work should test independent repetitions, additional agents and model families, and human-facing configuration tools.
+The observed tradeoff supports accepting modest interface overhead to constrain harder Specification tasks and provide provenance and reusable initialization. Future work should use repeated, difficulty-stratified cases and ablate each interface feature.
 
 \section*{Acknowledgements}
 This research was funded by the Ahuora Centre for Smart Energy Systems under the New Zealand Ministry of Business, Innovation and Employment Advanced Energy Platform Technology research programme.
@@ -155,7 +177,9 @@ This research was funded by the Ahuora Centre for Smart Energy Systems under the
 A sample implementation of replacement logic in Pyomo, initialization tests, and the geothermal model example are available at \url{https://github.com/bertkdowns/pyomo-replace}.
 
 \section*{Declaration of Use of AI}
-Generative AI was used to assist in preparing an initial manuscript draft. The authors are responsible for reviewing, verifying, and revising the manuscript. The AI-agent configuration experiment is described in the main text.
+Level 4 - Substantive Generation (Core Scientific Contribution Support)
+
+The authors used generative AI tools to assist in generating initial hypotheses, outlining modeling approaches, and drafting portions of the methodology and discussion. All AI-generated content was critically evaluated, validated, and substantially revised by the authors. While generative AI was used as a support tool, the authors assume full responsibility for the originality, accuracy, and conclusions of the work.
 
 \pseprintreferences
 \pseprintcopyright
