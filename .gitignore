@@ -2,3 +2,19 @@
 __pycache__
 .pytest_cache
 .opencode
+*.zip
+*.synctex(busy)
+
+# LaTeX build artifacts for the conference paper
+experiment-paper/conference-paper/*.aux
+experiment-paper/conference-paper/*.bbl
+experiment-paper/conference-paper/*.bcf
+experiment-paper/conference-paper/*.blg
+experiment-paper/conference-paper/*.fdb_latexmk
+experiment-paper/conference-paper/*.fls
+experiment-paper/conference-paper/*.log
+experiment-paper/conference-paper/*.out
+experiment-paper/conference-paper/*.pdf
+experiment-paper/conference-paper/*.run.xml
+experiment-paper/conference-paper/*.synctex.gz
+experiment-paper/conference-paper/*.xdv
