@@ -18,6 +18,8 @@ This template file also provides debugging methods, printing the over-constraine
 
 The template file for pyomo-replace also includes the standard two-stage initialisation pyomo-replace is designed to work with: first initialising without any active variable replacements, then re-solving with the variable replacements enabled.
 
+Both the replaced and base case branches are available at https://github.com/waikato-ahuora-smart-energy-systems/Ahuora-Adaptive-Digital-Twin-Platform/pull/2243
+
 ### Prompt
 
 We then run a clean opencode session (using v1.18.1), with a prompt such as the following:
